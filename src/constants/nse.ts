@@ -24,11 +24,6 @@ export const symbols = [
   "S&P500",
 ];
 
-export const Instrument = {
-  FUTSTK: "FUTSTK",
-  FUTIDX: "FUTIDX",
-};
-
 export const URLS = {
   EXPIRY_DATES: (obj: IFetchExpiryDatesServiceReqObj) =>
     `https://www.nseindia.com/api/historical/foCPV/expireDts?instrument=${obj.instrument}&symbol=${obj.symbol}&year=${obj.year}`,

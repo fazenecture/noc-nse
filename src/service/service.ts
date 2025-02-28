@@ -5,8 +5,8 @@ import {
   IFetchOIDifferenceReqObj,
   IFetchStocksReqObj,
 } from "../types";
-import { API_CONFIG, Instrument, symbols, URLS } from "../constants/nse";
-import { METHODS } from "../types/enums";
+import { API_CONFIG, symbols, URLS } from "../constants/nse";
+import { INSTRUMENTS, METHODS } from "../types/enums";
 import NSEHelper from "../helper/helper";
 
 export default class NSEService extends NSEHelper {
@@ -32,11 +32,11 @@ export default class NSEService extends NSEHelper {
     date1MonthAgo.setMonth(dateNow.getMonth() - 1);
 
     let selectedSymbol = symbols;
-    let instrument = Instrument.FUTIDX;
+    let instrument = INSTRUMENTS.INDEX_FUTURE;
     if (type === "stocks") {
       const stocksData = await this.fetchStocksService({ instrument });
       selectedSymbol = stocksData;
-      instrument = Instrument.FUTSTK;
+      instrument = INSTRUMENTS.STOCK_FUTURE;
     }
 
     for (const symbol of selectedSymbol) {
@@ -49,21 +49,21 @@ export default class NSEService extends NSEHelper {
       for (const expiryDate of expiryDates) {
         const data1Day = await this.fetchDataService({
           symbol,
-          fromData: this.formatDate(date1DayAgo),
+          fromDate: this.formatDate(date1DayAgo),
           toDate: this.formatDate(dateNow),
           expiryDate,
           instrument,
         });
         const data1Week = await this.fetchDataService({
           symbol,
-          fromData: this.formatDate(date1WeekAgo),
+          fromDate: this.formatDate(date1WeekAgo),
           toDate: this.formatDate(dateNow),
           expiryDate,
           instrument,
         });
         const data1Month = await this.fetchDataService({
           symbol,
-          fromData: this.formatDate(date1MonthAgo),
+          fromDate: this.formatDate(date1MonthAgo),
           toDate: this.formatDate(dateNow),
           expiryDate,
           instrument,
@@ -126,11 +126,11 @@ export default class NSEService extends NSEHelper {
   };
 
   public fetchDataService = async (obj: IFetchDataReqObj) => {
-    const { symbol, fromData, toDate, expiryDate, instrument } = obj;
+    const { symbol, fromDate, toDate, expiryDate, instrument } = obj;
 
     const url = URLS.FO_CPV({
       symbol,
-      fromData,
+      fromDate,
       toDate,
       expiryDate,
       instrument,

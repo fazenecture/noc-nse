@@ -1,6 +1,8 @@
+import { IContractsData } from "../types";
+
 export default class NSEHelper {
   public checkCondition = (
-    data: any[]
+    data: IContractsData[]
   ): { date: string; previousDate: string }[] => {
     const occurrences: any = [];
 
