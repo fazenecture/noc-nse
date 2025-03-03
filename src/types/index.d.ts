@@ -17,7 +17,7 @@ export type IFetchStocksReqObj = {
 };
 
 export type IFetchOIDifferenceReqObj = {
-  type: string;
+  type: string | null;
   year: number;
 };
 

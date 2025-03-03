@@ -34,9 +34,9 @@ export default class NSEService extends NSEHelper {
     let selectedSymbol = symbols;
     let instrument = INSTRUMENTS.INDEX_FUTURE;
     if (type === "stocks") {
+      instrument = INSTRUMENTS.STOCK_FUTURE;
       const stocksData = await this.fetchStocksService({ instrument });
       selectedSymbol = stocksData;
-      instrument = INSTRUMENTS.STOCK_FUTURE;
     }
 
     for (const symbol of selectedSymbol) {
