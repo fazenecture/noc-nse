@@ -9,3 +9,8 @@ export enum INSTRUMENTS {
   INDEX_OPTIONS = "OPTIDX",
   STOCK_OPTIONS = "OPTSTK",
 }
+
+export enum SYNC_TYPE {
+  FULL_SYNC = "full_sync",
+  DAILY_SYNC = "daily_sync",
+}

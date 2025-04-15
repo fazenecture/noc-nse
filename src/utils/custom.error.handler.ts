@@ -4,12 +4,13 @@ import { ValidationError } from "joi";
 import ErrorHandler from "./error.handler";
 
 const customErrorHandler = async (res: Response, error: any) => {
-  console.error(
-    "❌ Error: ",
-    JSON.stringify(error),
-    error["Error"],
-    error.toString()
-  );
+  // console.error(
+  //   "❌ Error: ",
+  //   JSON.stringify(error),
+  //   error["Error"],
+  //   error.toString()
+  // );
+  console.log(`"❌ Error: ", ${error}`);
 
   if (error instanceof ValidationError) {
     return res.header({ "x-frame-options": "deny" }).status(400).json({
