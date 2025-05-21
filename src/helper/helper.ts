@@ -154,13 +154,13 @@ export default class NSEHelper extends NSEDb {
 
       // Intercept requests/responses for debugging
       await page.setRequestInterception(true);
-      page.on("request", (req) => {
-        console.log("➡️ Requested:", req.url());
-        req.continue();
-      });
-      page.on("response", (res) => {
-        console.log("⬅️ Response:", res.url(), res.status());
-      });
+      // page.on("request", (req) => {
+      //   console.log("➡️ Requested:", req.url());
+      //   req.continue();
+      // });
+      // page.on("response", (res) => {
+      //   console.log("⬅️ Response:", res.url(), res.status());
+      // });
 
       // Navigate to homepage first
       console.log("🔁 Visiting NSE Homepage...");
@@ -173,9 +173,8 @@ export default class NSEHelper extends NSEDb {
       console.log("📄 Navigating to target report page...");
       await page.goto(url, {
         waitUntil: "networkidle2",
-        timeout: 30000,
+        timeout: 60000, // ← increased to 60 seconds
       });
-
       // Wait extra time to allow all scripts to run
       await new Promise((resolve) => setTimeout(resolve, 10000));
 
