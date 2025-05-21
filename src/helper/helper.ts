@@ -89,33 +89,33 @@ export default class NSEHelper extends NSEDb {
     return `${day}-${month}-${year}`;
   };
 
-  // public getCookiesFromResponse = async (url: string) => {
-  //   try {
-  //     const response = await axios.get(url, {
-  //       withCredentials: true, // Important for handling cookies
-  //       headers: {
-  //         "User-Agent":
-  //           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  //         Accept:
-  //           "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-  //         "Accept-Encoding": "gzip, deflate, br",
-  //         "Accept-Language": "en-US,en;q=0.5",
-  //         Referer: "https://www.nseindia.com",
-  //         Connection: "keep-alive",
-  //       },
-  //     });
+  public getCookiesFromResponse = async (url: string) => {
+    try {
+      const response = await axios.get(url, {
+        withCredentials: true, // Important for handling cookies
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Accept-Language": "en-US,en;q=0.5",
+          Referer: "https://www.nseindia.com",
+          Connection: "keep-alive",
+        },
+      });
 
-  //     const cookies = response.headers["set-cookie"];
-  //     if (cookies) {
-  //       const final = this.formatCookies(cookies);
-  //       return final;
-  //     } else {
-  //       console.log("No cookies found in the response headers.");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching cookies:", error);
-  //   }
-  // };
+      const cookies = response.headers["set-cookie"];
+      if (cookies) {
+        const final = this.formatCookies(cookies);
+        return final;
+      } else {
+        console.log("No cookies found in the response headers.");
+      }
+    } catch (error) {
+      console.error("Error fetching cookies:", error);
+    }
+  };
 
   // public getCookiesFromResponse = async (url: string): Promise<string> => {
   //   let browser;
@@ -207,44 +207,44 @@ export default class NSEHelper extends NSEDb {
   //   }
   // };
 
-  public getCookiesFromResponse = async (
-    url: string
-  ): Promise<string | undefined> => {
-    try {
-      const proxyAuth = `${process.env.PROXY_USERNAME}:${process.env.PROXY_PASSWORD}`;
-      const proxyUrl = `http://${proxyAuth}@${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`;
-      const httpsAgent = new HttpsProxyAgent(proxyUrl);
+  // public getCookiesFromResponse = async (
+  //   url: string
+  // ): Promise<string | undefined> => {
+  //   try {
+  //     const proxyAuth = `${process.env.PROXY_USERNAME}:${process.env.PROXY_PASSWORD}`;
+  //     const proxyUrl = `http://${proxyAuth}@${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`;
+  //     const httpsAgent = new HttpsProxyAgent(proxyUrl);
 
-      const response = await axios.get(url, {
-        httpsAgent,
-        withCredentials: true,
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-          "Accept-Encoding": "gzip, deflate, br",
-          "Accept-Language": "en-US,en;q=0.5",
-          Referer: "https://www.nseindia.com",
-          Connection: "keep-alive",
-        },
-      });
+  //     const response = await axios.get(url, {
+  //       httpsAgent,
+  //       withCredentials: true,
+  //       headers: {
+  //         "User-Agent":
+  //           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  //         Accept:
+  //           "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  //         "Accept-Encoding": "gzip, deflate, br",
+  //         "Accept-Language": "en-US,en;q=0.5",
+  //         Referer: "https://www.nseindia.com",
+  //         Connection: "keep-alive",
+  //       },
+  //     });
 
-      const cookies = response.headers["set-cookie"];
-      if (cookies && cookies.length) {
-        const final = this.formatCookies(cookies);
-        console.log("✅ Set-Cookie Headers:", cookies);
-        console.log("✅ Final Cookie String:", final);
-        return final;
-      } else {
-        console.warn("⚠️ No cookies found in response headers.");
-        return undefined;
-      }
-    } catch (error: any) {
-      console.error("❌ Error fetching cookies:", error.message || error);
-      return undefined;
-    }
-  };
+  //     const cookies = response.headers["set-cookie"];
+  //     if (cookies && cookies.length) {
+  //       const final = this.formatCookies(cookies);
+  //       console.log("✅ Set-Cookie Headers:", cookies);
+  //       console.log("✅ Final Cookie String:", final);
+  //       return final;
+  //     } else {
+  //       console.warn("⚠️ No cookies found in response headers.");
+  //       return undefined;
+  //     }
+  //   } catch (error: any) {
+  //     console.error("❌ Error fetching cookies:", error.message || error);
+  //     return undefined;
+  //   }
+  // };
 
   private formatCookies = (cookiesArray: string[]): string => {
     return cookiesArray.map((cookie) => cookie.split(";")[0]).join("; ");
