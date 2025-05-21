@@ -16,7 +16,7 @@ import {
 } from "../types";
 import axios from "axios";
 import { BUILDUP_TYPE } from "../types/enums";
-import { fetchWithProxyRetries } from "../utils/proxy.utils";
+import { fetchNSECookiesWithProxyRetries } from "../utils/proxy.utils";
 export default class NSEHelper extends NSEDb {
   public checkCondition = (
     data: IContractsData[]
@@ -310,7 +310,7 @@ export default class NSEHelper extends NSEDb {
     url: string
   ): Promise<string | undefined> {
     try {
-      const response = await fetchWithProxyRetries(url);
+      const response = await fetchNSECookiesWithProxyRetries(url);
       const cookies = response.headers["set-cookie"];
       if (cookies?.length) {
         const final = this.formatCookies(cookies);

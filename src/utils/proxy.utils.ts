@@ -42,7 +42,7 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export const fetchWithProxyRetries = async (
+export const fetchNSECookiesWithProxyRetries = async (
   url: string,
   maxRetries = PROXIES.length
 ): Promise<AxiosResponse<any>> => {

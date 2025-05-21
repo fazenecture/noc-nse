@@ -35,7 +35,7 @@ export default class NSESyncService {
         await this.fullSyncExecution();
       }
     } catch (err) {
-      console.log("err: ", err);
+      console.log("❌ err: ", err);
     }
   };
 
@@ -108,7 +108,6 @@ export default class NSESyncService {
     }
 
     const { processed_data, raw_data } = await this.dailySyncDataBuild();
-    console.log("processed_data: ", processed_data);
     const CHUNK_SIZE = 500;
 
     const processedChunks = this.nseService.chunkArray(
@@ -117,17 +116,16 @@ export default class NSESyncService {
     );
     const rawChunks = this.nseService.chunkArray(raw_data, CHUNK_SIZE);
 
-    //! TESTING
-    // await this.nseService.runChunkedParallel(
-    //   processedChunks,
-    //   this.nseService.insertProcessedDataDb
-    // );
-    // await this.nseService.runChunkedParallel(
-    //   rawChunks,
-    //   this.nseService.insertSymbolRawDataDb
-    // );
+    await this.nseService.runChunkedParallel(
+      processedChunks,
+      this.nseService.insertProcessedDataDb
+    );
+    await this.nseService.runChunkedParallel(
+      rawChunks,
+      this.nseService.insertSymbolRawDataDb
+    );
 
-    // await this.nseService.sendSlackAlert(processed_data);
+    await this.nseService.sendSlackAlert(processed_data);
 
     return {
       message: "✅ Data sync completed successfully!",
@@ -325,9 +323,6 @@ export default class NSESyncService {
     let counter = 0;
 
     for (const symbol of selectedSymbol) {
-      // if (symbol !== "DIXON") {
-      //   continue;
-      // }
       if (counter % 25 === 0) {
         const reFetchedCookies = await this.nseService.getCookiesFromResponse(
           URLS.NSE_WEBSITE
