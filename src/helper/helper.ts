@@ -1,5 +1,6 @@
 import moment from "moment";
 import NSEDb from "../db/db";
+import puppeteer from "puppeteer";
 
 import {
   IContractsData,
@@ -83,31 +84,68 @@ export default class NSEHelper extends NSEDb {
     return `${day}-${month}-${year}`;
   };
 
-  public getCookiesFromResponse = async (url: string) => {
+  // public getCookiesFromResponse = async (url: string) => {
+  //   try {
+  //     const response = await axios.get(url, {
+  //       withCredentials: true, // Important for handling cookies
+  //       headers: {
+  //         "User-Agent":
+  //           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  //         Accept:
+  //           "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  //         "Accept-Encoding": "gzip, deflate, br",
+  //         "Accept-Language": "en-US,en;q=0.5",
+  //         Referer: "https://www.nseindia.com",
+  //         Connection: "keep-alive",
+  //       },
+  //     });
+
+  //     const cookies = response.headers["set-cookie"];
+  //     if (cookies) {
+  //       const final = this.formatCookies(cookies);
+  //       return final;
+  //     } else {
+  //       console.log("No cookies found in the response headers.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching cookies:", error);
+  //   }
+  // };
+
+  public getCookiesFromResponse = async (url: string): Promise<string> => {
     try {
-      const response = await axios.get(url, {
-        withCredentials: true, // Important for handling cookies
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-          "Accept-Encoding": "gzip, deflate, br",
-          "Accept-Language": "en-US,en;q=0.5",
-          Referer: "https://www.nseindia.com",
-          Connection: "keep-alive",
-        },
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
 
-      const cookies = response.headers["set-cookie"];
-      if (cookies) {
-        const final = this.formatCookies(cookies);
-        return final;
-      } else {
-        console.log("No cookies found in the response headers.");
-      }
+      const page = await browser.newPage();
+      await page.setUserAgent(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      );
+
+      await page.goto("https://www.nseindia.com", {
+        waitUntil: "domcontentloaded",
+        timeout: 15000,
+      });
+
+      // Go to the actual URL to get cookies specific to that path
+      await page.goto(url, {
+        waitUntil: "domcontentloaded",
+        timeout: 15000,
+      });
+      const cookies = await page.cookies();
+      const cookieString = cookies
+        .map((c) => `${c.name}=${c.value}`)
+        .join("; ");
+
+      await browser.close();
+
+      console.log("cookieString: ", cookieString);
+      return cookieString;
     } catch (error) {
-      console.error("Error fetching cookies:", error);
+      console.error("Puppeteer Error while fetching cookies:", error);
+      return "";
     }
   };
 
@@ -290,9 +328,7 @@ export default class NSEHelper extends NSEDb {
     }
   };
 
-  private readonly SLACK_WEBHOOK_URL =
-    process.env.SLACK_WEBHOOK_URL ??
-    "https://hooks.slack.com/services/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";
+  private readonly SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
 
   private readonly MAX_BLOCKS_PER_MESSAGE = 20;
   private readonly BLOCKS_PER_RECORD = 5;

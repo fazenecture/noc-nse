@@ -108,6 +108,7 @@ export default class NSESyncService {
     }
 
     const { processed_data, raw_data } = await this.dailySyncDataBuild();
+    console.log("processed_data: ", processed_data);
     const CHUNK_SIZE = 500;
 
     const processedChunks = this.nseService.chunkArray(

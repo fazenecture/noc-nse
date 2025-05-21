@@ -18,7 +18,7 @@ app.use("/api", baseRouter);
 const PORT = process.env.PORT || 4000;
 
 const init = async () => {
-  // new CRONService().execute();
+  await new CRONService().execute();
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
   });
