@@ -325,9 +325,9 @@ export default class NSESyncService {
     let counter = 0;
 
     for (const symbol of selectedSymbol) {
-      if (symbol !== "DIXON") {
-        continue;
-      }
+      // if (symbol !== "DIXON") {
+      //   continue;
+      // }
       if (counter % 25 === 0) {
         const reFetchedCookies = await this.nseService.getCookiesFromResponse(
           URLS.NSE_WEBSITE
