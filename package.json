@@ -30,6 +30,8 @@
     "nodemon": "^3.1.9",
     "pg": "^8.14.1",
     "puppeteer": "^24.9.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "sqlutils": "^1.5.4",
     "tsc": "^2.0.4",
     "typescript": "^5.8.3"

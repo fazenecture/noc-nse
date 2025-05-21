@@ -1,6 +1,10 @@
 import moment from "moment";
 import NSEDb from "../db/db";
-import puppeteer from "puppeteer";
+// import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+
+puppeteer.use(StealthPlugin());
 
 import {
   IContractsData,
@@ -113,40 +117,41 @@ export default class NSEHelper extends NSEDb {
   // };
 
   public getCookiesFromResponse = async (url: string): Promise<string> => {
+    let browser;
     try {
-      const browser = await puppeteer.launch({
-        executablePath: "/usr/bin/chromium-browser",
+      browser = await puppeteer.launch({
         headless: true,
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
 
       const page = await browser.newPage();
+
       await page.setUserAgent(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       );
 
+      console.log("🔁 Visiting NSE Homepage...");
       await page.goto("https://www.nseindia.com", {
-        waitUntil: "networkidle2", // ensures JS challenge passes
-        timeout: 20000,
+        waitUntil: "networkidle2",
+        timeout: 30000,
       });
 
-      // // Go to the actual URL to get cookies specific to that path
-      // await page.goto(url, {
-      //   waitUntil: "domcontentloaded",
-      //   timeout: 15000,
-      // });
+      // wait manually since waitForTimeout doesn't exist
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
       const cookies = await page.cookies();
-      console.log("cookies: ", cookies);
       const cookieString = cookies
         .map((c) => `${c.name}=${c.value}`)
         .join("; ");
+      console.log("✅ cookies:", cookies.map((c) => c.name).join(", "));
+      console.log("✅ cookieString:", cookieString);
 
       await browser.close();
 
-      console.log("cookieString: ", cookieString);
       return cookieString;
     } catch (error) {
-      console.error("Puppeteer Error while fetching cookies:", error);
+      console.error("❌ Puppeteer error:", error);
+      if (browser) await browser.close();
       return "";
     }
   };
