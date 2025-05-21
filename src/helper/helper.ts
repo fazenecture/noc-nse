@@ -328,7 +328,7 @@ export default class NSEHelper extends NSEDb {
     }
   };
 
-  private readonly SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+  private readonly SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL ?? "";
 
   private readonly MAX_BLOCKS_PER_MESSAGE = 20;
   private readonly BLOCKS_PER_RECORD = 5;
