@@ -136,10 +136,12 @@ export default class NSEHelper extends NSEDb {
 
       await page.setRequestInterception(true);
       page.on("request", (req) => {
-        console.log("➡️ Request:", req.url());
+        console.log("➡️ Requested:", req.url());
         req.continue();
       });
-
+      page.on("response", (res) => {
+        console.log("⬅️ Response:", res.url(), res.status());
+      });
       console.log("🔁 Visiting NSE Homepage...");
       await page.goto("https://www.nseindia.com", {
         waitUntil: "networkidle2",
@@ -167,14 +169,24 @@ export default class NSEHelper extends NSEDb {
       // });
       await new Promise((resolve) => setTimeout(resolve, 5000));
 
+      // Extract cookies
+      const browserCookies = await page.cookies();
+      const documentCookie = await page.evaluate(() => document.cookie);
+
       const cookies = await page.cookies();
       console.log("cookies: ", cookies);
       const cookieString = cookies
         .map((c) => `${c.name}=${c.value}`)
         .join("; ");
-      console.log("✅ cookies:", cookies.map((c) => c.name).join(", "));
-      console.log("✅ cookieString:", cookieString);
-
+      console.log(
+        "✅ Non-HttpOnly Cookies:",
+        browserCookies.map((c) => c.name)
+      );
+      console.log(
+        "✅ JS-accessible Cookies (document.cookie):",
+        documentCookie
+      );
+      console.log("✅ Final Cookie String for Requests:", cookieString);
       await browser.close();
 
       return cookieString;
