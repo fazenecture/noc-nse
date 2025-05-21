@@ -115,6 +115,7 @@ export default class NSEHelper extends NSEDb {
   public getCookiesFromResponse = async (url: string): Promise<string> => {
     try {
       const browser = await puppeteer.launch({
+        executablePath: "/usr/bin/chromium-browser",
         headless: true,
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
