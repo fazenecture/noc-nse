@@ -212,7 +212,7 @@ export default class NSEHelper extends NSEDb {
   ): Promise<string | undefined> => {
     try {
       const proxyAuth = `${process.env.PROXY_USERNAME}:${process.env.PROXY_PASSWORD}`;
-      const proxyUrl = `http://${proxyAuth}@${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`;
+      const proxyUrl = `https://${proxyAuth}@${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`;
       const httpsAgent = new HttpsProxyAgent(proxyUrl);
 
       const response = await axios.get(url, {
