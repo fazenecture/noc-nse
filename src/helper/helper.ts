@@ -131,13 +131,26 @@ export default class NSEHelper extends NSEDb {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       );
 
+      await page.setViewport({ width: 1366, height: 768 });
+      page.setDefaultNavigationTimeout(45000);
+
       console.log("🔁 Visiting NSE Homepage...");
       await page.goto("https://www.nseindia.com", {
         waitUntil: "networkidle2",
         timeout: 30000,
       });
 
+      console.log("📄 Navigating to target report page...");
+      await page.goto(url, {
+        waitUntil: "networkidle2",
+        timeout: 30000,
+      });
+
       // wait manually since waitForTimeout doesn't exist
+      await page.waitForSelector("body");
+      await page.evaluate(() => {
+        window.scrollBy(0, 200); // triggers more DOM events
+      });
       await new Promise((resolve) => setTimeout(resolve, 5000));
 
       const cookies = await page.cookies();
