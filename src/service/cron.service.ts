@@ -11,7 +11,7 @@ export default class CRONService {
   public execute = async () => {
     try {
       console.log("CRON: INIT");
-      cron.schedule("2 * * * *", () => {
+      cron.schedule("* * * * *", () => {
         // cron.schedule("30 15 * * *", () => {
         try {
           console.log("CRON: Starting");
