@@ -33,6 +33,7 @@
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "sqlutils": "^1.5.4",
+    "ts-node": "^10.9.2",
     "tsc": "^2.0.4",
     "typescript": "^5.8.3"
   },
