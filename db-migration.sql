@@ -42,6 +42,7 @@ CREATE TABLE processed_data (
     percentage_change_contracts TEXT,
     difference_in_contracts TEXT,
     occurrence_date TIMESTAMPTZ,
+    meta_data JSON,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     -- Unique constraint to prevent duplication
     CONSTRAINT unique_processed_data UNIQUE (name, expiry_date, instrument, occurrence_date)

@@ -4,6 +4,7 @@ import morgan from "morgan";
 import express, { Application } from "express";
 import cors from "cors";
 import baseRouter from "./routes/index.routes";
+import CRONService from "./service/cron.service";
 
 const app: Application = express();
 
@@ -16,6 +17,11 @@ app.use("/api", baseRouter);
 
 const PORT = process.env.PORT || 4000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+const init = async () => {
+  new CRONService().execute();
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+};
+
+init();

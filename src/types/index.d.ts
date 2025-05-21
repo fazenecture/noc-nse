@@ -102,6 +102,7 @@ export type IProcessedData = {
   difference_in_contracts: string;
   occurrence_date: string | Date;
   created_at?: Date; // optional, defaulted to current timestamp
+  meta_data: any;
 };
 
 export type IFlattenedOccurrence = {
@@ -129,5 +130,6 @@ export type IRawGroupedOccurrence = {
     changeInOI: string;
     percentageChangeContracts: string;
     differenceInContracts: string;
+    metaData: any;
   }[];
 };

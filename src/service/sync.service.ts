@@ -30,7 +30,7 @@ export default class NSESyncService {
     console.log("sync_type: ", sync_type);
     try {
       if (sync_type === SYNC_TYPE.DAILY_SYNC) {
-        await this.dailySyncExecution();
+        await this.dailySyncCRONExecution();
       } else if (sync_type === SYNC_TYPE.FULL_SYNC) {
         await this.fullSyncExecution();
       }
@@ -49,17 +49,54 @@ export default class NSESyncService {
     );
     const rawChunks = this.nseService.chunkArray(raw_data, CHUNK_SIZE);
 
-    await this.nseService.runChunkedParallel(
-      processedChunks,
-      this.nseService.insertProcessedDataDb
-    );
-    await this.nseService.runChunkedParallel(
-      rawChunks,
-      this.nseService.insertSymbolRawDataDb
-    );
+    // await this.nseService.runChunkedParallel(
+    //   processedChunks,
+    //   this.nseService.insertProcessedDataDb
+    // );
+    // await this.nseService.runChunkedParallel(
+    //   rawChunks,
+    //   this.nseService.insertSymbolRawDataDb
+    // );
   };
 
   public dailySyncExecution = async () => {
+    const today = new Date();
+    const day = today.getDay();
+
+    // if (day === 0 || day === 6) {
+    //   console.log("🛑 Today is a weekend. Skipping sync.");
+    //   return {
+    //     message: "🛑 Today is a weekend. Skipping sync.",
+    //   };
+    // }
+
+    const { processed_data, raw_data } = await this.dailySyncDataBuild();
+    const CHUNK_SIZE = 500;
+
+    const processedChunks = this.nseService.chunkArray(
+      processed_data,
+      CHUNK_SIZE
+    );
+    const rawChunks = this.nseService.chunkArray(raw_data, CHUNK_SIZE);
+
+    // await this.nseService.runChunkedParallel(
+    //   processedChunks,
+    //   this.nseService.insertProcessedDataDb
+    // );
+    // await this.nseService.runChunkedParallel(
+    //   rawChunks,
+    //   this.nseService.insertSymbolRawDataDb
+    // );
+
+    await this.nseService.sendSlackAlert(processed_data);
+
+    return {
+      message: "✅ Data sync completed successfully!",
+      processed_data,
+    };
+  };
+
+  public dailySyncCRONExecution = async () => {
     const today = new Date();
     const day = today.getDay();
 
@@ -88,8 +125,11 @@ export default class NSESyncService {
       this.nseService.insertSymbolRawDataDb
     );
 
+    await this.nseService.sendSlackAlert(processed_data);
+
     return {
       message: "✅ Data sync completed successfully!",
+      processed_data,
     };
   };
 
@@ -262,7 +302,6 @@ export default class NSESyncService {
     const cookie = await this.nseService.getCookiesFromResponse(
       URLS.NSE_WEBSITE
     );
-    console.log("cookie: ", cookie);
 
     if (!cookie?.length || cookie === undefined) {
       throw new ErrorHandler({
@@ -284,8 +323,6 @@ export default class NSESyncService {
     let counter = 0;
 
     for (const symbol of selectedSymbol) {
-      console.log("symbol: ", symbol);
-
       if (counter % 25 === 0) {
         const reFetchedCookies = await this.nseService.getCookiesFromResponse(
           URLS.NSE_WEBSITE
@@ -333,6 +370,7 @@ export default class NSESyncService {
         });
 
         const filter1WeekData = this.getFilteredContracts(data1Week);
+        console.log("filter1WeekData: ", filter1WeekData);
 
         rawData.push(...data1Day);
 
@@ -372,18 +410,18 @@ export default class NSESyncService {
       );
     });
 
-    const latestDate = moment(sortedDesc[0].FH_TIMESTAMP, "DD-MMM-YYYY").format(
-      "DD-MMM-YYYY"
-    );
-    const todayDate = moment().format("DD-MMM-YYYY");
+    // const latestDate = moment(sortedDesc[0].FH_TIMESTAMP, "DD-MMM-YYYY").format(
+    //   "DD-MMM-YYYY"
+    // );
+    // const todayDate = moment().format("DD-MMM-YYYY");
 
     let result: IContractsData[] = [];
 
-    if (latestDate === todayDate) {
-      result = sortedDesc.slice(0, 2); // take latest and second-latest
-    } else {
-      result = [sortedDesc[0]];
-    }
+    // if (latestDate === todayDate) {
+    result = sortedDesc.slice(0, 2);
+    // } else {
+    //   result = [sortedDesc[0]];
+    // }
 
     // Step 2: Sort selected items in ascending order before returning
     return result.sort((a, b) => {

@@ -1,5 +1,6 @@
 import moment from "moment";
 import NSEDb from "../db/db";
+
 import {
   IContractsData,
   IFlattenedOccurrence,
@@ -8,6 +9,7 @@ import {
   ISymbolRawData,
 } from "../types";
 import axios from "axios";
+import { BUILDUP_TYPE } from "../types/enums";
 export default class NSEHelper extends NSEDb {
   public checkCondition = (
     data: IContractsData[]
@@ -25,6 +27,24 @@ export default class NSEHelper extends NSEDb {
         parseFloat(previous.FH_TOT_TRADED_QTY) /
         parseFloat(previous.FH_MARKET_LOT);
       const changeInOI = parseFloat(current.FH_CHANGE_IN_OI);
+
+      const currentPrice = parseFloat(current.FH_LAST_TRADED_PRICE);
+      const previousPrice = parseFloat(previous.FH_LAST_TRADED_PRICE);
+
+      const priceChange = currentPrice - previousPrice;
+      const oiChange = changeInOI;
+
+      let buildupType: BUILDUP_TYPE = BUILDUP_TYPE.INDECISIVE;
+
+      if (priceChange > 0 && oiChange > 0) {
+        buildupType = BUILDUP_TYPE.LONG_BUILDUP;
+      } else if (priceChange < 0 && oiChange > 0) {
+        buildupType = BUILDUP_TYPE.SHORT_BUILDUP;
+      } else if (priceChange > 0 && oiChange < 0) {
+        buildupType = BUILDUP_TYPE.SHORT_COVERING;
+      } else if (priceChange < 0 && oiChange < 0) {
+        buildupType = BUILDUP_TYPE.LONG_UNWINDING;
+      }
 
       // Calculate percentage change in contracts
       const percentageChangeContracts = parseFloat(
@@ -46,6 +66,9 @@ export default class NSEHelper extends NSEDb {
           changeInOI,
           percentageChangeContracts,
           differenceInContracts,
+          metaData: {
+            buildup_type: buildupType,
+          },
         });
       }
     }
@@ -234,6 +257,7 @@ export default class NSEHelper extends NSEDb {
             change_in_oi: occ.changeInOI,
             percentage_change_contracts: occ.percentageChangeContracts,
             difference_in_contracts: occ.differenceInContracts,
+            meta_data: occ.metaData,
           });
         }
       }
@@ -263,6 +287,111 @@ export default class NSEHelper extends NSEDb {
     for (let i = 0; i < chunks.length; i += this._CONCURRENCY) {
       const group = chunks.slice(i, i + this._CONCURRENCY);
       await Promise.all(group.map(handler));
+    }
+  };
+
+  private readonly SLACK_WEBHOOK_URL =
+    process.env.SLACK_WEBHOOK_URL ??
+    "https://hooks.slack.com/services/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";
+
+  private readonly MAX_BLOCKS_PER_MESSAGE = 20;
+  private readonly BLOCKS_PER_RECORD = 5;
+  private readonly RECORDS_PER_MESSAGE = Math.floor(
+    this.MAX_BLOCKS_PER_MESSAGE / this.BLOCKS_PER_RECORD
+  );
+
+  public chunkArraySlack = <T>(arr: T[], size: number): T[][] =>
+    Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+      arr.slice(i * size, i * size + size)
+    );
+
+  public sendSlackAlert = async (processed_data: IProcessedData[]) => {
+    const chunks = this.chunkArraySlack(
+      processed_data,
+      this.RECORDS_PER_MESSAGE
+    ); // ~10 records per message
+
+    for (const chunk of chunks) {
+      const blocks: any[] = [];
+
+      chunk.forEach((stock, index) => {
+        const { buildup_type } = stock.meta_data || {};
+        const {
+          name,
+          instrument,
+          expiry_date,
+          previous_date,
+          occurrence_date,
+          previous_contracts,
+          current_contracts,
+          difference_in_contracts,
+          percentage_change_contracts,
+          change_in_oi,
+        } = stock;
+
+        const buildupEmojiMap: Record<string, string> = {
+          long_buildup: "🟢 *Long Buildup*",
+          short_buildup: "🔴 *Short Buildup*",
+          short_covering: "🟡 *Short Covering*",
+          long_unwinding: "🔵 *Long Unwinding*",
+        };
+
+        const buildupText = buildupEmojiMap[buildup_type] || "❔ *Unknown*";
+        const percentageChangeContracts = parseFloat(
+          percentage_change_contracts
+        );
+        const differenceInContracts = parseInt(difference_in_contracts);
+
+        const isHighVolume =
+          percentageChangeContracts > 100 && differenceInContracts > 10000;
+
+        const heading = isHighVolume
+          ? `🔥 *High Volume Alert: ${name} (${instrument})*`
+          : `📈 *Stock Alert: ${name} (${instrument})*`;
+
+        if (index > 0) blocks.push({ type: "divider" });
+
+        blocks.push(
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `${heading}\n${buildupText}`,
+            },
+          },
+          {
+            type: "section",
+            fields: [
+              {
+                type: "mrkdwn",
+                text: `*🗓️ Expiry:* ${expiry_date}`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*📅 Occurrence Date :* ${occurrence_date}`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*📊 Contracts:* ${previous_contracts} → ${current_contracts} *(+${difference_in_contracts.toLocaleString()})*`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*🔁 % Change:* ${percentageChangeContracts.toFixed(2)}%`,
+              },
+              {
+                type: "mrkdwn",
+                text: `*🧠 OI Change:* ${change_in_oi.toLocaleString()}`,
+              },
+            ],
+          }
+        );
+      });
+
+      try {
+        await axios.post(this.SLACK_WEBHOOK_URL, { blocks });
+      } catch (err: any) {
+        console.error("❌ Slack alert failed:", err.message);
+      }
     }
   };
 }
