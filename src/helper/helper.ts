@@ -118,22 +118,41 @@ export default class NSEHelper extends NSEDb {
 
   public getCookiesFromResponse = async (url: string): Promise<string> => {
     let browser;
+
+    console.log("process.env.PROXY_HOST: ", process.env.PROXY_HOST);
+    const proxy =
+      process.env.PROXY_HOST && process.env.PROXY_PORT
+        ? `http://${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`
+        : null;
+
+    const launchArgs = ["--no-sandbox", "--disable-setuid-sandbox"];
+    if (proxy) launchArgs.unshift(`--proxy-server=${proxy}`);
+
     try {
       browser = await puppeteer.launch({
         executablePath: "/usr/bin/chromium-browser",
         headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: launchArgs,
       });
 
       const page = await browser.newPage();
 
+      // Authenticate with proxy if needed
+      if (proxy && process.env.PROXY_USERNAME && process.env.PROXY_PASSWORD) {
+        await page.authenticate({
+          username: process.env.PROXY_USERNAME,
+          password: process.env.PROXY_PASSWORD,
+        });
+      }
+
+      // Set user agent and viewport
       await page.setUserAgent(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       );
-
       await page.setViewport({ width: 1366, height: 768 });
       page.setDefaultNavigationTimeout(45000);
 
+      // Intercept requests/responses for debugging
       await page.setRequestInterception(true);
       page.on("request", (req) => {
         console.log("➡️ Requested:", req.url());
@@ -142,42 +161,33 @@ export default class NSEHelper extends NSEDb {
       page.on("response", (res) => {
         console.log("⬅️ Response:", res.url(), res.status());
       });
+
+      // Navigate to homepage first
       console.log("🔁 Visiting NSE Homepage...");
       await page.goto("https://www.nseindia.com", {
         waitUntil: "networkidle2",
         timeout: 30000,
       });
 
+      // Then go to the actual report page
       console.log("📄 Navigating to target report page...");
       await page.goto(url, {
         waitUntil: "networkidle2",
         timeout: 30000,
       });
 
-      // Wait for AJAX call (XHR) related to report page
-      await page.waitForResponse(
-        (response) =>
-          response.url().includes("fo_eq_security") &&
-          response.status() === 200,
-        { timeout: 15000 }
-      );
+      // Wait extra time to allow all scripts to run
+      await new Promise((resolve) => setTimeout(resolve, 10000));
 
-      // wait manually since waitForTimeout doesn't exist
-      // await page.waitForSelector("body");
-      // await page.evaluate(() => {
-      //   window.scrollBy(0, 200); // triggers more DOM events
-      // });
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-
-      // Extract cookies
+      // Get browser and JS cookies
       const browserCookies = await page.cookies();
       const documentCookie = await page.evaluate(() => document.cookie);
 
-      const cookies = await page.cookies();
-      console.log("cookies: ", cookies);
-      const cookieString = cookies
+      const cookieString = browserCookies
         .map((c) => `${c.name}=${c.value}`)
         .join("; ");
+
+      // Logs
       console.log(
         "✅ Non-HttpOnly Cookies:",
         browserCookies.map((c) => c.name)
@@ -187,8 +197,8 @@ export default class NSEHelper extends NSEDb {
         documentCookie
       );
       console.log("✅ Final Cookie String for Requests:", cookieString);
-      await browser.close();
 
+      await browser.close();
       return cookieString;
     } catch (error) {
       console.error("❌ Puppeteer error:", error);
