@@ -166,17 +166,17 @@ export default class NSEHelper extends NSEDb {
       console.log("🔁 Visiting NSE Homepage...");
       await page.goto("https://www.nseindia.com", {
         waitUntil: "networkidle2",
-        timeout: 30000,
+        timeout: 45000,
       });
 
-      // Then go to the actual report page
       console.log("📄 Navigating to target report page...");
       await page.goto(url, {
-        waitUntil: "networkidle2",
-        timeout: 60000, // ← increased to 60 seconds
+        waitUntil: "domcontentloaded", // ← faster
+        timeout: 60000, // ← more tolerant
       });
-      // Wait extra time to allow all scripts to run
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+
+      await page.evaluate(() => window.scrollBy(0, 300));
+      await new Promise((resolve) => setTimeout(resolve, 8000));
 
       // Get browser and JS cookies
       const browserCookies = await page.cookies();
