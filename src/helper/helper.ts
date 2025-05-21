@@ -3,6 +3,7 @@ import NSEDb from "../db/db";
 // import puppeteer from "puppeteer";
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import { HttpsProxyAgent } from "https-proxy-agent";
 
 puppeteer.use(StealthPlugin());
 
@@ -116,93 +117,132 @@ export default class NSEHelper extends NSEDb {
   //   }
   // };
 
-  public getCookiesFromResponse = async (url: string): Promise<string> => {
-    let browser;
+  // public getCookiesFromResponse = async (url: string): Promise<string> => {
+  //   let browser;
 
-    console.log("process.env.PROXY_HOST: ", process.env.PROXY_HOST);
-    const proxy =
-      process.env.PROXY_HOST && process.env.PROXY_PORT
-        ? `http://${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`
-        : null;
+  //   console.log("process.env.PROXY_HOST: ", process.env.PROXY_HOST);
+  //   const proxy =
+  //     process.env.PROXY_HOST && process.env.PROXY_PORT
+  //       ? `http://${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`
+  //       : null;
 
-    const launchArgs = ["--no-sandbox", "--disable-setuid-sandbox"];
-    if (proxy) launchArgs.unshift(`--proxy-server=${proxy}`);
+  //   const launchArgs = ["--no-sandbox", "--disable-setuid-sandbox"];
+  //   if (proxy) launchArgs.unshift(`--proxy-server=${proxy}`);
 
+  //   try {
+  //     browser = await puppeteer.launch({
+  //       executablePath: "/usr/bin/chromium-browser",
+  //       headless: true,
+  //       args: launchArgs,
+  //     });
+
+  //     const page = await browser.newPage();
+
+  //     // Authenticate with proxy if needed
+  //     if (proxy && process.env.PROXY_USERNAME && process.env.PROXY_PASSWORD) {
+  //       await page.authenticate({
+  //         username: process.env.PROXY_USERNAME,
+  //         password: process.env.PROXY_PASSWORD,
+  //       });
+  //     }
+
+  //     // Set user agent and viewport
+  //     await page.setUserAgent(
+  //       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  //     );
+  //     await page.setViewport({ width: 1366, height: 768 });
+  //     page.setDefaultNavigationTimeout(45000);
+
+  //     // Intercept requests/responses for debugging
+  //     await page.setRequestInterception(true);
+  //     // page.on("request", (req) => {
+  //     //   console.log("➡️ Requested:", req.url());
+  //     //   req.continue();
+  //     // });
+  //     // page.on("response", (res) => {
+  //     //   console.log("⬅️ Response:", res.url(), res.status());
+  //     // });
+
+  //     // Navigate to homepage first
+  //     console.log("🔁 Visiting NSE Homepage...");
+  //     await page.goto("https://www.nseindia.com", {
+  //       waitUntil: "networkidle2",
+  //       timeout: 45000,
+  //     });
+
+  //     console.log("📄 Navigating to target report page...");
+  //     await page.goto(url, {
+  //       waitUntil: "domcontentloaded", // ← faster
+  //       timeout: 60000, // ← more tolerant
+  //     });
+
+  //     await page.evaluate(() => window.scrollBy(0, 300));
+  //     await new Promise((resolve) => setTimeout(resolve, 8000));
+
+  //     // Get browser and JS cookies
+  //     const browserCookies = await page.cookies();
+  //     const documentCookie = await page.evaluate(() => document.cookie);
+
+  //     const cookieString = browserCookies
+  //       .map((c) => `${c.name}=${c.value}`)
+  //       .join("; ");
+
+  //     // Logs
+  //     console.log(
+  //       "✅ Non-HttpOnly Cookies:",
+  //       browserCookies.map((c) => c.name)
+  //     );
+  //     console.log(
+  //       "✅ JS-accessible Cookies (document.cookie):",
+  //       documentCookie
+  //     );
+  //     console.log("✅ Final Cookie String for Requests:", cookieString);
+
+  //     await browser.close();
+  //     return cookieString;
+  //   } catch (error) {
+  //     console.error("❌ Puppeteer error:", error);
+  //     if (browser) await browser.close();
+  //     return "";
+  //   }
+  // };
+
+  public getCookiesFromResponse = async (
+    url: string
+  ): Promise<string | undefined> => {
     try {
-      browser = await puppeteer.launch({
-        executablePath: "/usr/bin/chromium-browser",
-        headless: true,
-        args: launchArgs,
+      const proxyAuth = `${process.env.PROXY_USERNAME}:${process.env.PROXY_PASSWORD}`;
+      const proxyUrl = `http://${proxyAuth}@${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`;
+      const httpsAgent = new HttpsProxyAgent(proxyUrl);
+
+      const response = await axios.get(url, {
+        httpsAgent,
+        withCredentials: true,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Accept-Language": "en-US,en;q=0.5",
+          Referer: "https://www.nseindia.com",
+          Connection: "keep-alive",
+        },
       });
 
-      const page = await browser.newPage();
-
-      // Authenticate with proxy if needed
-      if (proxy && process.env.PROXY_USERNAME && process.env.PROXY_PASSWORD) {
-        await page.authenticate({
-          username: process.env.PROXY_USERNAME,
-          password: process.env.PROXY_PASSWORD,
-        });
+      const cookies = response.headers["set-cookie"];
+      if (cookies && cookies.length) {
+        const final = this.formatCookies(cookies);
+        console.log("✅ Set-Cookie Headers:", cookies);
+        console.log("✅ Final Cookie String:", final);
+        return final;
+      } else {
+        console.warn("⚠️ No cookies found in response headers.");
+        return undefined;
       }
-
-      // Set user agent and viewport
-      await page.setUserAgent(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      );
-      await page.setViewport({ width: 1366, height: 768 });
-      page.setDefaultNavigationTimeout(45000);
-
-      // Intercept requests/responses for debugging
-      await page.setRequestInterception(true);
-      // page.on("request", (req) => {
-      //   console.log("➡️ Requested:", req.url());
-      //   req.continue();
-      // });
-      // page.on("response", (res) => {
-      //   console.log("⬅️ Response:", res.url(), res.status());
-      // });
-
-      // Navigate to homepage first
-      console.log("🔁 Visiting NSE Homepage...");
-      await page.goto("https://www.nseindia.com", {
-        waitUntil: "networkidle2",
-        timeout: 45000,
-      });
-
-      console.log("📄 Navigating to target report page...");
-      await page.goto(url, {
-        waitUntil: "domcontentloaded", // ← faster
-        timeout: 60000, // ← more tolerant
-      });
-
-      await page.evaluate(() => window.scrollBy(0, 300));
-      await new Promise((resolve) => setTimeout(resolve, 8000));
-
-      // Get browser and JS cookies
-      const browserCookies = await page.cookies();
-      const documentCookie = await page.evaluate(() => document.cookie);
-
-      const cookieString = browserCookies
-        .map((c) => `${c.name}=${c.value}`)
-        .join("; ");
-
-      // Logs
-      console.log(
-        "✅ Non-HttpOnly Cookies:",
-        browserCookies.map((c) => c.name)
-      );
-      console.log(
-        "✅ JS-accessible Cookies (document.cookie):",
-        documentCookie
-      );
-      console.log("✅ Final Cookie String for Requests:", cookieString);
-
-      await browser.close();
-      return cookieString;
-    } catch (error) {
-      console.error("❌ Puppeteer error:", error);
-      if (browser) await browser.close();
-      return "";
+    } catch (error: any) {
+      console.error("❌ Error fetching cookies:", error.message || error);
+      return undefined;
     }
   };
 
