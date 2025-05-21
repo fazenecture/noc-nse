@@ -120,6 +120,7 @@ export default class NSEHelper extends NSEDb {
     let browser;
     try {
       browser = await puppeteer.launch({
+        executablePath: "/usr/bin/chromium-browser",
         headless: true,
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
