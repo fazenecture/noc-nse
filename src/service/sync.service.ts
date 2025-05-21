@@ -116,14 +116,15 @@ export default class NSESyncService {
     );
     const rawChunks = this.nseService.chunkArray(raw_data, CHUNK_SIZE);
 
-    await this.nseService.runChunkedParallel(
-      processedChunks,
-      this.nseService.insertProcessedDataDb
-    );
-    await this.nseService.runChunkedParallel(
-      rawChunks,
-      this.nseService.insertSymbolRawDataDb
-    );
+    //! TESTING
+    // await this.nseService.runChunkedParallel(
+    //   processedChunks,
+    //   this.nseService.insertProcessedDataDb
+    // );
+    // await this.nseService.runChunkedParallel(
+    //   rawChunks,
+    //   this.nseService.insertSymbolRawDataDb
+    // );
 
     await this.nseService.sendSlackAlert(processed_data);
 
