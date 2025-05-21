@@ -134,6 +134,12 @@ export default class NSEHelper extends NSEDb {
       await page.setViewport({ width: 1366, height: 768 });
       page.setDefaultNavigationTimeout(45000);
 
+      await page.setRequestInterception(true);
+      page.on("request", (req) => {
+        console.log("➡️ Request:", req.url());
+        req.continue();
+      });
+
       console.log("🔁 Visiting NSE Homepage...");
       await page.goto("https://www.nseindia.com", {
         waitUntil: "networkidle2",
@@ -146,11 +152,19 @@ export default class NSEHelper extends NSEDb {
         timeout: 30000,
       });
 
+      // Wait for AJAX call (XHR) related to report page
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes("fo_eq_security") &&
+          response.status() === 200,
+        { timeout: 15000 }
+      );
+
       // wait manually since waitForTimeout doesn't exist
-      await page.waitForSelector("body");
-      await page.evaluate(() => {
-        window.scrollBy(0, 200); // triggers more DOM events
-      });
+      // await page.waitForSelector("body");
+      // await page.evaluate(() => {
+      //   window.scrollBy(0, 200); // triggers more DOM events
+      // });
       await new Promise((resolve) => setTimeout(resolve, 5000));
 
       const cookies = await page.cookies();
