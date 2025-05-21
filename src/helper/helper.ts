@@ -136,6 +136,7 @@ export default class NSEHelper extends NSEDb {
         timeout: 15000,
       });
       const cookies = await page.cookies();
+      console.log("cookies: ", cookies);
       const cookieString = cookies
         .map((c) => `${c.name}=${c.value}`)
         .join("; ");
