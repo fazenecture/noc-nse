@@ -79,14 +79,14 @@ export default class NSESyncService {
     );
     const rawChunks = this.nseService.chunkArray(raw_data, CHUNK_SIZE);
 
-    // await this.nseService.runChunkedParallel(
-    //   processedChunks,
-    //   this.nseService.insertProcessedDataDb
-    // );
-    // await this.nseService.runChunkedParallel(
-    //   rawChunks,
-    //   this.nseService.insertSymbolRawDataDb
-    // );
+    await this.nseService.runChunkedParallel(
+      processedChunks,
+      this.nseService.insertProcessedDataDb
+    );
+    await this.nseService.runChunkedParallel(
+      rawChunks,
+      this.nseService.insertSymbolRawDataDb
+    );
 
     await this.nseService.sendSlackAlert(processed_data);
 
@@ -127,7 +127,7 @@ export default class NSESyncService {
     //   this.nseService.insertSymbolRawDataDb
     // );
 
-    await this.nseService.sendSlackAlert(processed_data);
+    // await this.nseService.sendSlackAlert(processed_data);
 
     return {
       message: "✅ Data sync completed successfully!",
