@@ -30,7 +30,9 @@
     "nodemon": "^3.1.9",
     "pg": "^8.14.1",
     "puppeteer": "^24.9.0",
-    "sqlutils": "^1.5.4"
+    "sqlutils": "^1.5.4",
+    "tsc": "^2.0.4",
+    "typescript": "^5.8.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

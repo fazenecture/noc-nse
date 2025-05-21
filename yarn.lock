@@ -2501,6 +2501,11 @@ tree-kill@^1.2.2:
   resolved "https://registry.npmjs.org/tree-kill/-/tree-kill-1.2.2.tgz"
   integrity sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==
 
+tsc@^2.0.4:
+  version "2.0.4"
+  resolved "https://registry.npmjs.org/tsc/-/tsc-2.0.4.tgz"
+  integrity sha512-fzoSieZI5KKJVBYGvwbVZs/J5za84f2lSTLPYf6AGiIf43tZ3GNrI1QzTLcjtyDDP4aLxd46RTZq1nQxe7+k5Q==
+
 tslib@^2.0.1, tslib@^2.1.0:
   version "2.8.1"
   resolved "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz"
@@ -2518,6 +2523,11 @@ typed-query-selector@^2.12.0:
   version "2.12.0"
   resolved "https://registry.npmjs.org/typed-query-selector/-/typed-query-selector-2.12.0.tgz"
   integrity sha512-SbklCd1F0EiZOyPiW192rrHZzZ5sBijB6xM+cpmrwDqObvdtunOHHIk9fCGsoK5JVIYXoyEp4iEdE3upFH3PAg==
+
+typescript@^5.8.3, typescript@>=4.9.5:
+  version "5.8.3"
+  resolved "https://registry.npmjs.org/typescript/-/typescript-5.8.3.tgz"
+  integrity sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==
 
 undefsafe@^2.0.5:
   version "2.0.5"
