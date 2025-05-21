@@ -292,7 +292,7 @@ export default class NSEHelper extends NSEDb {
 
   private readonly SLACK_WEBHOOK_URL =
     process.env.SLACK_WEBHOOK_URL ??
-    "https://hooks.slack.com/services/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";
+    "https://hooks.slack.com/services/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";
 
   private readonly MAX_BLOCKS_PER_MESSAGE = 20;
   private readonly BLOCKS_PER_RECORD = 5;

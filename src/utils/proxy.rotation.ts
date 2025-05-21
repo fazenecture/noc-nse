@@ -178,7 +178,7 @@ export default class IPRotationManager {
         }
 
         return response;
-      } catch (error) {
+      } catch (error: any) {
         lastError = error;
 
         // Check if error is rate limiting related
