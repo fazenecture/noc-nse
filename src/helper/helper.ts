@@ -126,15 +126,15 @@ export default class NSEHelper extends NSEDb {
       );
 
       await page.goto("https://www.nseindia.com", {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
+        waitUntil: "networkidle2", // ensures JS challenge passes
+        timeout: 20000,
       });
 
-      // Go to the actual URL to get cookies specific to that path
-      await page.goto(url, {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
-      });
+      // // Go to the actual URL to get cookies specific to that path
+      // await page.goto(url, {
+      //   waitUntil: "domcontentloaded",
+      //   timeout: 15000,
+      // });
       const cookies = await page.cookies();
       console.log("cookies: ", cookies);
       const cookieString = cookies
