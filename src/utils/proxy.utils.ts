@@ -13,16 +13,27 @@ interface ProxyConfig {
 }
 
 const RAW_PROXIES = [
-  "in.decodo.com:10001:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
-  "in.decodo.com:10002:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
-  "in.decodo.com:10003:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
-  "in.decodo.com:10004:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
-  "in.decodo.com:10005:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
-  "in.decodo.com:10006:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
-  "in.decodo.com:10007:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
-  "in.decodo.com:10008:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
-  "in.decodo.com:10009:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
-  "in.decodo.com:10010:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
+  "in.decodo.com:10001:user-spcwoviqpj-sessionduration-1440:aw2igK7QDgscu~41Gl",
+  "in.decodo.com:10002:user-spcwoviqpj-sessionduration-1440:aw2igK7QDgscu~41Gl",
+  "in.decodo.com:10003:user-spcwoviqpj-sessionduration-1440:aw2igK7QDgscu~41Gl",
+  "in.decodo.com:10004:user-spcwoviqpj-sessionduration-1440:aw2igK7QDgscu~41Gl",
+  "in.decodo.com:10005:user-spcwoviqpj-sessionduration-1440:aw2igK7QDgscu~41Gl",
+  "in.decodo.com:10006:user-spcwoviqpj-sessionduration-1440:aw2igK7QDgscu~41Gl",
+  "in.decodo.com:10007:user-spcwoviqpj-sessionduration-1440:aw2igK7QDgscu~41Gl",
+  "in.decodo.com:10008:user-spcwoviqpj-sessionduration-1440:aw2igK7QDgscu~41Gl",
+  "in.decodo.com:10009:user-spcwoviqpj-sessionduration-1440:aw2igK7QDgscu~41Gl",
+  "in.decodo.com:10010:user-spcwoviqpj-sessionduration-1440:aw2igK7QDgscu~41Gl",
+
+  // "in.decodo.com:10001:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
+  // "in.decodo.com:10002:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
+  // "in.decodo.com:10003:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
+  // "in.decodo.com:10004:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
+  // "in.decodo.com:10005:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
+  // "in.decodo.com:10006:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
+  // "in.decodo.com:10007:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
+  // "in.decodo.com:10008:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
+  // "in.decodo.com:10009:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
+  // "in.decodo.com:10010:user-spcwoviqpj-sessionduration-60:aw2igK7QDgscu~41Gl",
 ];
 
 const PROXIES: ProxyConfig[] = RAW_PROXIES.map((line) => {
