@@ -18,17 +18,17 @@ export default class CRONService {
     try {
       console.log("CRON: INIT");
       // cron.schedule("* * * * *", () => {
-      // cron.schedule(
-      //   "30 21 * * *",
-      //   async () => {
-      console.log("🚀 CRON: Started", new Date().toISOString());
-      await this.nseSyncService.init(SYNC_TYPE.DAILY_SYNC);
-      console.log("✅ CRON: Completed", new Date().toISOString());
-      //   },
-      //   {
-      //     timezone: "Asia/Kolkata",
-      //   }
-      // );
+      cron.schedule(
+        "30 21 * * *",
+        async () => {
+          console.log("🚀 CRON: Started", new Date().toISOString());
+          await this.nseSyncService.init(SYNC_TYPE.DAILY_SYNC);
+          console.log("✅ CRON: Completed", new Date().toISOString());
+        },
+        {
+          timezone: "Asia/Kolkata",
+        }
+      );
     } catch (err: any) {
       console.log("❌ CRON: Error ", err);
       await alertSlack(this.errorMessage(err));
