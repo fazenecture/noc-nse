@@ -114,6 +114,7 @@ export default class NSESyncService {
       processed_data,
       CHUNK_SIZE
     );
+    console.log("processedChunks: ", processedChunks?.length);
     const rawChunks = this.nseService.chunkArray(raw_data, CHUNK_SIZE);
 
     await this.nseService.runChunkedParallel(
@@ -125,7 +126,9 @@ export default class NSESyncService {
       this.nseService.insertSymbolRawDataDb
     );
 
+    console.log("🐥 Sending Slack Alert!");
     await this.nseService.sendSlackAlert(processed_data);
+    console.log("🐥 Sended Slack Alert!");
 
     return {
       message: "✅ Data sync completed successfully!",
