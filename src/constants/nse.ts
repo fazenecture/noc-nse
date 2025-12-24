@@ -26,11 +26,11 @@ export const symbols = [
 
 export const URLS = {
   EXPIRY_DATES: (obj: IFetchExpiryDatesServiceUrlObj) =>
-    `https://www.nseindia.com/api/historical/foCPV/expireDts?instrument=${obj.instrument}&symbol=${obj.symbol}&year=${obj.year}`,
+    `https://www.nseindia.com/api/historicalOR/meta/foCPV/expireDts?instrument=${obj.instrument}&symbol=${obj.symbol}&year=${obj.year}`,
   FO_CPV: (obj: IFetchDataUrlObj) =>
-    `https://www.nseindia.com/api/historical/foCPV?from=${obj.fromDate}&to=${obj.toDate}&instrumentType=${obj.instrument}&symbol=${obj.symbol}&year=2025&expiryDate=${obj.expiryDate}`,
+    `https://www.nseindia.com/api/historicalOR/foCPV?from=${obj.fromDate}&to=${obj.toDate}&instrumentType=${obj.instrument}&symbol=${obj.symbol}&year=2025&expiryDate=${obj.expiryDate}`,
   FO_CPV_META_SYMBOL: (instrument: string) =>
-    `https://www.nseindia.com/api/historical/foCPV/meta/symbolv2?instrument=${instrument}`,
+    `https://www.nseindia.com/api/historicalOR/meta/foCPV/symbolv2?instrument=${instrument}`,
   NSE_WEBSITE: "https://www.nseindia.com/report-detail/fo_eq_security",
 };
 
