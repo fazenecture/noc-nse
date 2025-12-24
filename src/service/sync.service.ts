@@ -6,6 +6,8 @@ import { INSTRUMENTS, SYNC_TYPE } from "../types/enums";
 import ErrorHandler from "../utils/error.handler";
 import NSEService from "./service";
 import { IContractsData } from "../types";
+import { alertSlack } from "../utils/slack.utils";
+import fs from "fs";
 
 export default class NSESyncService {
   nseDb: NSEDb;
@@ -22,6 +24,11 @@ export default class NSESyncService {
     this.cookies = null;
   }
 
+  private readonly errorMessage = (err) =>
+    `:rotating_light: *Cron Failure* at ${new Date().toLocaleString()}\n\`\`\`${
+      err.stack || err.message
+    }\`\`\``;
+
   public init = async (sync_type: SYNC_TYPE) => {
     /**
      * sync_type -> full_sync & daily_sync
@@ -36,6 +43,7 @@ export default class NSESyncService {
       }
     } catch (err) {
       console.log("❌ err: ", err);
+      await alertSlack(this.errorMessage(err));
     }
   };
 
@@ -70,13 +78,15 @@ export default class NSESyncService {
     //   };
     // }
 
-    const { processed_data, raw_data } = await this.dailySyncDataBuild();
+    const { processed_data, raw_data, alert_data } =
+      await this.dailySyncDataBuild();
     const CHUNK_SIZE = 500;
 
     const processedChunks = this.nseService.chunkArray(
       processed_data,
       CHUNK_SIZE
     );
+
     const rawChunks = this.nseService.chunkArray(raw_data, CHUNK_SIZE);
 
     await this.nseService.runChunkedParallel(
@@ -88,7 +98,7 @@ export default class NSESyncService {
       this.nseService.insertSymbolRawDataDb
     );
 
-    await this.nseService.sendSlackAlert(processed_data);
+    await this.nseService.sendSlackAlert(alert_data);
 
     return {
       message: "✅ Data sync completed successfully!",
@@ -107,28 +117,39 @@ export default class NSESyncService {
       };
     }
 
-    const { processed_data, raw_data } = await this.dailySyncDataBuild();
+    const { processed_data, raw_data, alert_data } =
+      await this.dailySyncDataBuild();
     const CHUNK_SIZE = 500;
 
     const processedChunks = this.nseService.chunkArray(
       processed_data,
       CHUNK_SIZE
     );
+
     console.log("processedChunks: ", processedChunks?.length);
     const rawChunks = this.nseService.chunkArray(raw_data, CHUNK_SIZE);
 
-    await this.nseService.runChunkedParallel(
-      processedChunks,
-      this.nseService.insertProcessedDataDb
-    );
-    await this.nseService.runChunkedParallel(
-      rawChunks,
-      this.nseService.insertSymbolRawDataDb
-    );
+    if (processed_data.length) {
+      await this.nseService.runChunkedParallel(
+        processedChunks,
+        this.nseService.insertProcessedDataDb
+      );
+    }
 
-    console.log("🐥 Sending Slack Alert!");
-    await this.nseService.sendSlackAlert(processed_data);
-    console.log("🐥 Sended Slack Alert!");
+    if (raw_data.length) {
+      await this.nseService.runChunkedParallel(
+        rawChunks,
+        this.nseService.insertSymbolRawDataDb
+      );
+    }
+
+    
+    if (alert_data.length > 0) {
+      console.log("🐥 Sending Slack Alert!");
+      await this.nseService.sendSlackAlert(alert_data);
+      console.log("🐥 Sended Slack Alert!");
+    }
+    
 
     return {
       message: "✅ Data sync completed successfully!",
@@ -351,6 +372,18 @@ export default class NSESyncService {
         cookie: this.cookies,
       }); // Fetch expiry dates for the symbol
 
+      // if the current month is December, also fetch next year expiry dates
+      if (moment().month() === 11) {
+        const nextYearExpiryDates = await this.nseService.fetchExpiryDatesService({
+          symbol,
+          instrument,
+          year: year + 1,
+          cookie: this.cookies,
+        }); // Fetch next year expiry dates for the symbol
+  
+        expiryDates = [...expiryDates, ...nextYearExpiryDates];
+      }
+
       expiryDates = this.getFutureExpiryDates(expiryDates);
 
       for (const expiryDate of expiryDates) {
@@ -394,11 +427,39 @@ export default class NSESyncService {
 
     const processedData =
       this.nseHelper.flattenAndDeduplicateOccurrencesForDB(results);
+    const dataForAlert =
+      this.nseHelper.flattenAndDeduplicateOccurrencesForAlert(results);
+
+    // const dataForCSVExport =
+    //   this.nseHelper.flattenAndDeduplicateOccurrencesForCSVExport(results);
+
+    
+    // fs.writeFileSync(
+    //   `daily_sync_data_for_csv_export_${moment().format("YYYYMMDD")}.json`,
+    //   JSON.stringify(dataForCSVExport, null, 2)
+    // );
+
+    // this.exportDataToCSV(
+    //   dataForCSVExport,
+    //   `daily_sync_data_for_csv_export_${moment().format("YYYYMMDD")}.csv`
+    // );
+
     const rawDataFinal = this.nseHelper.prepareUniqueRawData(rawData);
+
+    const metaData = {
+      total_symbols_processed: selectedSymbol.length,
+      total_processed_records: processedData.length,
+      total_raw_records: rawDataFinal.length,
+      total_alerts_generated: dataForAlert.length,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log("📝 Daily Sync Metadata: ", metaData);
 
     return {
       processed_data: processedData,
       raw_data: rawDataFinal,
+      alert_data: dataForAlert,
     };
   };
 
@@ -433,6 +494,17 @@ export default class NSESyncService {
         moment(b.FH_TIMESTAMP, "DD-MMM-YYYY").valueOf()
       );
     });
+  };
+
+  private exportDataToCSV = (data: any[], filename: string) => {
+    const header = Object.keys(data[0]).join(",") + "\n";
+    const rows = data
+      .map((row) => Object.values(row).join(","))
+      .join("\n");
+    const csvContent = header + rows;
+
+    fs.writeFileSync(filename, csvContent);
+    console.log(`Data exported to ${filename}`);
   };
 
   public getFutureExpiryDates = (dates: string[]): string[] => {

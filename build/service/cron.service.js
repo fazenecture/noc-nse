@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const enums_1 = require("../types/enums");
 const slack_utils_1 = require("../utils/slack.utils");
 const sync_service_1 = __importDefault(require("./sync.service"));
+const node_cron_1 = __importDefault(require("node-cron"));
 class CRONService {
     constructor() {
         this.errorMessage = (err) => `:rotating_light: *Cron Failure* at ${new Date().toLocaleString()}\n\`\`\`${err.stack || err.message}\`\`\``;
@@ -22,17 +23,13 @@ class CRONService {
             try {
                 console.log("CRON: INIT");
                 // cron.schedule("* * * * *", () => {
-                // cron.schedule(
-                //   "30 21 * * *",
-                //   async () => {
-                console.log("🚀 CRON: Started", new Date().toISOString());
-                yield this.nseSyncService.init(enums_1.SYNC_TYPE.DAILY_SYNC);
-                console.log("✅ CRON: Completed", new Date().toISOString());
-                //   },
-                //   {
-                //     timezone: "Asia/Kolkata",
-                //   }
-                // );
+                node_cron_1.default.schedule("30 21 * * *", () => __awaiter(this, void 0, void 0, function* () {
+                    console.log("🚀 CRON: Started", new Date().toISOString());
+                    yield this.nseSyncService.init(enums_1.SYNC_TYPE.DAILY_SYNC);
+                    console.log("✅ CRON: Completed", new Date().toISOString());
+                }), {
+                    timezone: "Asia/Kolkata",
+                });
             }
             catch (err) {
                 console.log("❌ CRON: Error ", err);

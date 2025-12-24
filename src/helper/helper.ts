@@ -11,6 +11,7 @@ import {
   IContractsData,
   IFlattenedOccurrence,
   IProcessedData,
+  IProcessedDataForCSVExport,
   IRawGroupedOccurrence,
   ISymbolRawData,
 } from "../types";
@@ -64,20 +65,75 @@ export default class NSEHelper extends NSEDb {
       // Calculate absolute difference in contracts
       const differenceInContracts = currentContracts - previousContracts;
 
+      // IntraDay Volatility
+      const intraDayVolatility =
+        (parseFloat(current.FH_TRADE_HIGH_PRICE) -
+          parseFloat(current.FH_TRADE_LOW_PRICE)) /
+        parseFloat(current.FH_OPENING_PRICE);
+
+      const priceReturn1D =
+        (parseFloat(current.FH_CLOSING_PRICE) -
+          parseFloat(current.FH_PREV_CLS)) /
+        parseFloat(current.FH_PREV_CLS);
+
+      const rangeToPriceRation =
+        (parseFloat(current.FH_TRADE_HIGH_PRICE) -
+          parseFloat(current.FH_TRADE_LOW_PRICE)) /
+        parseFloat(current.FH_CLOSING_PRICE);
+
+      const priceChangeAbs =
+        parseFloat(current.FH_LAST_TRADED_PRICE) -
+        parseFloat(previous.FH_LAST_TRADED_PRICE);
+
+      const futSpotSpread =
+        parseFloat(current.FH_CLOSING_PRICE) - current.FH_UNDERLYING_VALUE;
+
+      const futSpotSpreadPerc =
+        (futSpotSpread / current.FH_UNDERLYING_VALUE) * 100;
+
+      const volumeToOI =
+        parseFloat(current.FH_TOT_TRADED_QTY) /
+        (Math.abs(parseFloat(current.FH_OPEN_INT)) || 1);
+
+      const volumeChangePerc =
+        (parseFloat(current.FH_TOT_TRADED_QTY) -
+          parseFloat(previous.FH_TOT_TRADED_QTY)) /
+        (Math.abs(parseFloat(previous.FH_TOT_TRADED_QTY)) || 1);
+
+      const volumeChangePrevDay =
+        parseFloat(current.FH_TOT_TRADED_QTY) /
+        parseFloat(previous.FH_TOT_TRADED_QTY);
+
+      const absorptionScore = volumeChangePerc * (1 - Math.abs(priceReturn1D));
+
+      let alertOnSlack = false;
       if (currentContracts > 1.5 * previousContracts && changeInOI > 0) {
-        occurrences.push({
-          date: this.convertToDDMMYYYY(current.FH_TIMESTAMP),
-          previousDate: this.convertToDDMMYYYY(previous.FH_TIMESTAMP),
-          currentContracts,
-          previousContracts,
-          changeInOI,
-          percentageChangeContracts,
-          differenceInContracts,
-          metaData: {
-            buildup_type: buildupType,
-          },
-        });
+        alertOnSlack = true;
       }
+
+      occurrences.push({
+        date: this.convertToDDMMYYYY(current.FH_TIMESTAMP),
+        previousDate: this.convertToDDMMYYYY(previous.FH_TIMESTAMP),
+        currentContracts,
+        previousContracts,
+        changeInOI,
+        percentageChangeContracts,
+        differenceInContracts,
+        alertOnSlack,
+        metaData: {
+          buildup_type: buildupType,
+          intraDayVolatility: intraDayVolatility.toFixed(3),
+          priceReturn1D: priceReturn1D.toFixed(3),
+          rangeToPriceRation: rangeToPriceRation.toFixed(3),
+          priceChange: priceChangeAbs.toFixed(3),
+          futSpotSpread: futSpotSpread.toFixed(3),
+          futSpotSpreadPerc: futSpotSpreadPerc.toFixed(3),
+          volumeToOI: volumeToOI.toFixed(3),
+          volumeChangePerc: volumeChangePerc.toFixed(3),
+          absorptionScore: absorptionScore.toFixed(3),
+          previousDayVolumeChange: volumeChangePrevDay.toFixed(3),
+        },
+      });
     }
 
     return occurrences; // Return all occurrences
@@ -309,19 +365,32 @@ export default class NSEHelper extends NSEDb {
   public async getCookiesFromResponse(
     url: string
   ): Promise<string | undefined> {
-    try {
-      const response = await fetchNSECookiesWithProxyRetries(url);
-      const cookies = response.headers["set-cookie"];
-      if (cookies?.length) {
-        const final = this.formatCookies(cookies);
-        console.log("✅ Cookies fetched:", final);
-        return final;
-      } else {
-        console.warn("⚠️ No cookies returned in headers.");
+    const maxRetries = 3;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetchNSECookiesWithProxyRetries(url);
+        const cookies = response.headers["set-cookie"];
+
+        if (cookies?.length) {
+          const final = this.formatCookies(cookies);
+          console.log("✅ Cookies fetched:", final);
+          return final;
+        }
+
+        console.warn(`⚠️ Attempt ${attempt}: No cookies returned`);
+      } catch (err: any) {
+        console.warn(`💥 Attempt ${attempt} failed:`, err?.message || err);
       }
-    } catch (err: any) {
-      console.error("💥 All proxy attempts failed:", err.message || err);
+
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await this.sleep(delay);
+      }
     }
+
+    console.error("❌ Max retries reached. Giving up.");
     return undefined;
   }
 
@@ -364,7 +433,7 @@ export default class NSEHelper extends NSEDb {
           instrument: item.FH_INSTRUMENT,
           option_type: item.FH_OPTION_TYPE,
           strike_price: item.FH_STRIKE_PRICE,
-          symbol_timestamp: new Date(item.TIMESTAMP),
+          symbol_timestamp: new Date(item.FH_TIMESTAMP_ORDER),
           change_in_oi: item.FH_CHANGE_IN_OI,
           closing_price: item.FH_CLOSING_PRICE,
           last_traded_price: item.FH_LAST_TRADED_PRICE,
@@ -398,7 +467,7 @@ export default class NSEHelper extends NSEDb {
       instrument: item.FH_INSTRUMENT,
       option_type: item.FH_OPTION_TYPE,
       strike_price: item.FH_STRIKE_PRICE,
-      symbol_timestamp: new Date(item.TIMESTAMP),
+      symbol_timestamp: new Date(item.FH_TIMESTAMP_ORDER),
       change_in_oi: item.FH_CHANGE_IN_OI,
       closing_price: item.FH_CLOSING_PRICE,
       last_traded_price: item.FH_LAST_TRADED_PRICE,
@@ -484,6 +553,86 @@ export default class NSEHelper extends NSEDb {
     return flatResults;
   };
 
+  public flattenAndDeduplicateOccurrencesForCSVExport = (
+    data: IRawGroupedOccurrence[]
+  ): IProcessedDataForCSVExport[] => {
+    const seen = new Set<string>();
+    const flatResults: IProcessedDataForCSVExport[] = [];
+
+    for (const item of data) {
+      const { symbol, expiryDate, instrument, occurrences } = item;
+
+      for (const occ of occurrences) {
+        const key = `${symbol}-${expiryDate}-${instrument}-${occ.date}`;
+
+        if (!seen.has(key)) {
+          seen.add(key);
+          flatResults.push({
+            name: symbol,
+            expiry_date: expiryDate,
+            instrument,
+            occurrence_date: occ.date,
+            previous_date: occ.previousDate,
+            current_contracts: occ.currentContracts,
+            previous_contracts: occ.previousContracts,
+            change_in_oi: occ.changeInOI,
+            percentage_change_contracts: occ.percentageChangeContracts,
+            difference_in_contracts: occ.differenceInContracts,
+            buildup_type: occ.metaData?.buildup_type ?? "",
+            intra_day_volatility: occ.metaData?.intraDayVolatility ?? "",
+            price_return_1d: occ.metaData?.priceReturn1D ?? "",
+            range_to_price_ration: occ.metaData?.rangeToPriceRation ?? "",
+            price_change: occ.metaData?.priceChange ?? "",
+            fut_spot_spread: occ.metaData?.futSpotSpread ?? "",
+            fut_spot_spread_perc: occ.metaData?.futSpotSpreadPerc ?? "",
+            volume_to_oi: occ.metaData?.volumeToOI ?? "",
+            volume_change_perc: occ.metaData?.volumeChangePerc ?? "",
+            absorption_score: occ.metaData?.absorptionScore ?? "",
+            previous_day_volume_change:
+              occ.metaData?.previousDayVolumeChange ?? "",
+          });
+        }
+      }
+    }
+
+    return flatResults;
+  };
+
+  public flattenAndDeduplicateOccurrencesForAlert = (
+    data: IRawGroupedOccurrence[]
+  ): IProcessedData[] => {
+    const seen = new Set<string>();
+    const flatResults: IProcessedData[] = [];
+
+    for (const item of data) {
+      const { symbol, expiryDate, instrument, occurrences } = item;
+
+      for (const occ of occurrences) {
+        const key = `${symbol}-${expiryDate}-${instrument}-${occ.date}`;
+
+        if (!seen.has(key) && occ.alertOnSlack) {
+          seen.add(key);
+          flatResults.push({
+            name: symbol,
+            expiry_date: expiryDate,
+            instrument,
+            occurrence_date: occ.date,
+            alert_on_slack: occ.alertOnSlack,
+            previous_date: occ.previousDate,
+            current_contracts: occ.currentContracts,
+            previous_contracts: occ.previousContracts,
+            change_in_oi: occ.changeInOI,
+            percentage_change_contracts: occ.percentageChangeContracts,
+            difference_in_contracts: occ.differenceInContracts,
+            meta_data: occ.metaData,
+          });
+        }
+      }
+    }
+
+    return flatResults;
+  };
+
   public convertToDDMMYYYY = (dateStr: string): string => {
     return moment(dateStr, "DD-MMM-YYYY").format("DD-MM-YYYY");
   };
@@ -521,6 +670,141 @@ export default class NSEHelper extends NSEDb {
       arr.slice(i * size, i * size + size)
     );
 
+  public interpretMarketAllParamsSimple = (meta: any): string[] => {
+    const points: string[] = [];
+
+    const priceReturn = parseFloat(meta.priceReturn1D);
+    const priceChange = parseFloat(meta.priceChange);
+    const volatility = parseFloat(meta.intraDayVolatility);
+    const rangeRatio = parseFloat(meta.rangeToPriceRation);
+    const volumeToOI = parseFloat(meta.volumeToOI);
+    const volumeChange = parseFloat(meta.volumeChangePerc);
+    const absorption = parseFloat(meta.absorptionScore);
+    const spreadPerc = parseFloat(meta.futSpotSpreadPerc);
+    const previousDayVolumeChange = parseFloat(meta.previousDayVolumeChange);
+
+    /* 1️⃣ Big investors behaviour */
+    const investorMap: Record<string, string> = {
+      long_unwinding: "🚪 Big investors are exiting",
+      long_buildup: "➕ Big investors are buying",
+      short_buildup: "➕ Big investors are betting on a fall",
+      short_covering: "🔄 Big investors are changing direction",
+    };
+
+    points.push(investorMap[meta.buildup_type]);
+
+    /* 2️⃣ Price direction */
+    if (priceReturn <= -0.01)
+      points.push(`*Price Return*: ${priceReturn} (📉 Price is falling)`);
+    else if (priceReturn < -0.002)
+      points.push(`*Price Return*: ${priceReturn} (📉 Price is slightly down)`);
+    else if (priceReturn <= 0.002)
+      points.push(`*Price Return*: ${priceReturn} (➡️ Price is stable)`);
+    else points.push(`*Price Return*: ${priceReturn} (📈 Price is rising)`);
+
+    /* 3️⃣ Price movement size */
+    if (Math.abs(priceChange) > 5) {
+      points.push(
+        `*Price Change*: ${priceChange} (💥 Price moved sharply today)`
+      );
+    } else {
+      points.push(
+        `*Price Change*: ${priceChange} (📏 Price movement was limited)`
+      );
+    }
+
+    /* 4️⃣ Trading activity (volatility) */
+    if (volatility < 0.01) {
+      points.push(`*Volatility*: ${volatility} (🧊 Trading was quiet)`);
+    } else if (volatility < 0.02) {
+      points.push(`*Volatility*: ${volatility} (🔥 Trading activity was high)`);
+    } else {
+      points.push(`*Volatility*: ${volatility} (🔥 Very heavy trading today)`);
+    }
+
+    /* 5️⃣ Price swing range */
+    if (rangeRatio > 0.02) {
+      points.push(
+        `*RangeRatio*: ${rangeRatio} (📊 Price moved within a wide range)`
+      );
+    } else {
+      points.push(
+        `*RangeRatio*: ${rangeRatio} (📊 Price stayed within a narrow range)`
+      );
+    }
+
+    /* 6️⃣ Trader participation */
+    if (volumeToOI < 0.2) {
+      points.push(`*VolumeToOI*: ${volumeToOI} (👥 Fewer traders were active)`);
+    } else if (volumeToOI <= 0.6) {
+      points.push(
+        `*VolumeToOI*: ${volumeToOI} (👥 Normal number of traders active)`
+      );
+    } else {
+      points.push(
+        `*VolumeToOI*: ${volumeToOI} (👥 Many traders entered and exited)`
+      );
+    }
+
+    /* 7️⃣ Change in interest */
+    if (volumeChange < -0.3) {
+      points.push(
+        `*Volume Change*: ${volumeChange} (🔻 Trading interest dropped)`
+      );
+    } else if (volumeChange > 0.3) {
+      points.push(
+        `*Volume Change*: ${volumeChange} (🔺 Trading interest surged)`
+      );
+    } else {
+      points.push(
+        `*Volume Change*: ${volumeChange} (➖ Trading interest steady)`
+      );
+    }
+
+    /* 8️⃣ Hidden buying / selling */
+    if (absorption > 0.5) {
+      points.push(
+        `*Absorption*: ${absorption} (🧲 Quiet buying or selling by big players)`
+      );
+    } else if (absorption < -0.5) {
+      points.push(`*Absorption*: ${absorption} (⚠️ Sudden, reactive trading)`);
+    } else {
+      points.push(
+        `*Absorption*: ${absorption} (🧲 No strong hidden buying or selling)`
+      );
+    }
+
+    /* 9️⃣ Market expectation */
+    if (spreadPerc > 0.3) {
+      points.push(
+        `*Spread*: ${spreadPerc} (🎯 Market expects prices to go up)`
+      );
+    } else if (spreadPerc < -0.3) {
+      points.push(
+        `*Spread*: ${spreadPerc} (🎯 Market expects prices to go down)`
+      );
+    } else {
+      points.push(`*Spread*: ${spreadPerc} (🎯 Market expects stable prices)`);
+    }
+
+    /* 🔟 Previous day volume change */
+    if (previousDayVolumeChange > 1) {
+      points.push(
+        `*Previous Day Volume Change*: ${previousDayVolumeChange} (📈 Volume increased compared to previous day)`
+      );
+    } else if (previousDayVolumeChange < 1) {
+      points.push(
+        `*Previous Day Volume Change*: ${previousDayVolumeChange} (📉 Volume decreased compared to previous day)`
+      );
+    } else {
+      points.push(
+        `*Previous Day Volume Change*: ${previousDayVolumeChange} (➖ Volume stable compared to previous day)`
+      );
+    }
+
+    return points;
+  };
+
   public sendSlackAlert = async (processed_data: IProcessedData[]) => {
     const chunks = this.chunkArraySlack(
       processed_data,
@@ -553,6 +837,8 @@ export default class NSEHelper extends NSEDb {
         };
 
         const buildupText = buildupEmojiMap[buildup_type] || "❔ *Unknown*";
+        const points =
+          this.interpretMarketAllParamsSimple(stock.meta_data) ?? [];
         const percentageChangeContracts = parseFloat(
           percentage_change_contracts
         );
@@ -599,6 +885,15 @@ export default class NSEHelper extends NSEDb {
                 text: `*🧠 OI Change:* ${change_in_oi.toLocaleString()}`,
               },
             ],
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*🔍 Market Insights:*\n${points
+                ?.map((point) => `• ${point}`)
+                ?.join("\n")}`,
+            },
           }
         );
       });
