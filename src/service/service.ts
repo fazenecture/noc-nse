@@ -21,7 +21,7 @@ export default class NSEService extends NSEHelper {
   }
 
   public fetchOIDifferenceService = async (
-    reqObj: IFetchOIDifferenceReqObj
+    reqObj: IFetchOIDifferenceReqObj,
   ) => {
     const results: any = [];
     this.errorSymbols = [];
@@ -65,14 +65,14 @@ export default class NSEService extends NSEHelper {
     let counter = 0;
     console.log(
       "selectedSymbol.splice(0, 10): ",
-      selectedSymbol?.splice(0, 10)
+      selectedSymbol?.splice(0, 10),
     );
     for (const symbol of selectedSymbol.splice(0, 10)) {
       console.log("symbol: ", symbol);
 
       if (counter % 25 === 0) {
         const reFetchedCookies = await this.getCookiesFromResponse(
-          URLS.NSE_WEBSITE
+          URLS.NSE_WEBSITE,
         );
 
         if (!reFetchedCookies?.length || reFetchedCookies === undefined) {
@@ -157,7 +157,7 @@ export default class NSEService extends NSEHelper {
   };
 
   public fetchExpiryDatesService = async (
-    obj: IFetchExpiryDatesServiceReqObj
+    obj: IFetchExpiryDatesServiceReqObj,
   ): Promise<any> => {
     try {
       const { symbol, instrument, year, cookie } = obj;
@@ -180,6 +180,7 @@ export default class NSEService extends NSEHelper {
       return response.data.expiresDts ?? [];
     } catch (error) {
       console.log("error: ", error);
+      return [];
     }
   };
 
@@ -210,6 +211,7 @@ export default class NSEService extends NSEHelper {
       return response?.data?.data ?? [];
     } catch (error) {
       console.log("error: ", error);
+      return [];
     }
   };
 

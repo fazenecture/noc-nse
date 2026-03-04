@@ -20,7 +20,7 @@ import { BUILDUP_TYPE } from "../types/enums";
 import { fetchNSECookiesWithProxyRetries } from "../utils/proxy.utils";
 export default class NSEHelper extends NSEDb {
   public checkCondition = (
-    data: IContractsData[]
+    data: IContractsData[],
   ): { date: string; previousDate: string }[] => {
     const occurrences: any = [];
 
@@ -59,7 +59,7 @@ export default class NSEHelper extends NSEDb {
         (
           ((currentContracts - previousContracts) / previousContracts) *
           100
-        ).toFixed(2)
+        ).toFixed(2),
       );
 
       // Calculate absolute difference in contracts
@@ -363,7 +363,7 @@ export default class NSEHelper extends NSEDb {
   // };
 
   public async getCookiesFromResponse(
-    url: string
+    url: string,
   ): Promise<string | undefined> {
     const maxRetries = 3;
 
@@ -403,7 +403,7 @@ export default class NSEHelper extends NSEDb {
   };
 
   public removeDuplicateContracts = (
-    data: IContractsData[]
+    data: IContractsData[],
   ): IContractsData[] => {
     const seen = new Set<string>();
     const unique: IContractsData[] = [];
@@ -459,7 +459,7 @@ export default class NSEHelper extends NSEDb {
   };
 
   public buildRawDataInsertObjects = (
-    data: IContractsData[]
+    data: IContractsData[],
   ): ISymbolRawData[] => {
     return data.map((item) => ({
       name: item.FH_SYMBOL,
@@ -487,7 +487,7 @@ export default class NSEHelper extends NSEDb {
   };
 
   public flattenAndDeduplicateOccurrences = (
-    data: IRawGroupedOccurrence[]
+    data: IRawGroupedOccurrence[],
   ): IFlattenedOccurrence[] => {
     const seen = new Set<string>();
     const flatResults: IFlattenedOccurrence[] = [];
@@ -520,7 +520,7 @@ export default class NSEHelper extends NSEDb {
   };
 
   public flattenAndDeduplicateOccurrencesForDB = (
-    data: IRawGroupedOccurrence[]
+    data: IRawGroupedOccurrence[],
   ): IProcessedData[] => {
     const seen = new Set<string>();
     const flatResults: IProcessedData[] = [];
@@ -554,7 +554,7 @@ export default class NSEHelper extends NSEDb {
   };
 
   public flattenAndDeduplicateOccurrencesForCSVExport = (
-    data: IRawGroupedOccurrence[]
+    data: IRawGroupedOccurrence[],
   ): IProcessedDataForCSVExport[] => {
     const seen = new Set<string>();
     const flatResults: IProcessedDataForCSVExport[] = [];
@@ -599,7 +599,7 @@ export default class NSEHelper extends NSEDb {
   };
 
   public flattenAndDeduplicateOccurrencesForAlert = (
-    data: IRawGroupedOccurrence[]
+    data: IRawGroupedOccurrence[],
   ): IProcessedData[] => {
     const seen = new Set<string>();
     const flatResults: IProcessedData[] = [];
@@ -649,7 +649,7 @@ export default class NSEHelper extends NSEDb {
 
   public runChunkedParallel = async (
     chunks: any[][],
-    handler: (chunk: any[]) => Promise<any>
+    handler: (chunk: any[]) => Promise<any>,
   ) => {
     for (let i = 0; i < chunks.length; i += this._CONCURRENCY) {
       const group = chunks.slice(i, i + this._CONCURRENCY);
@@ -662,12 +662,12 @@ export default class NSEHelper extends NSEDb {
   private readonly MAX_BLOCKS_PER_MESSAGE = 20;
   private readonly BLOCKS_PER_RECORD = 5;
   private readonly RECORDS_PER_MESSAGE = Math.floor(
-    this.MAX_BLOCKS_PER_MESSAGE / this.BLOCKS_PER_RECORD
+    this.MAX_BLOCKS_PER_MESSAGE / this.BLOCKS_PER_RECORD,
   );
 
   public chunkArraySlack = <T>(arr: T[], size: number): T[][] =>
     Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
-      arr.slice(i * size, i * size + size)
+      arr.slice(i * size, i * size + size),
     );
 
   public interpretMarketAllParamsSimple = (meta: any): string[] => {
@@ -705,11 +705,11 @@ export default class NSEHelper extends NSEDb {
     /* 3️⃣ Price movement size */
     if (Math.abs(priceChange) > 5) {
       points.push(
-        `*Price Change*: ${priceChange} (💥 Price moved sharply today)`
+        `*Price Change*: ${priceChange} (💥 Price moved sharply today)`,
       );
     } else {
       points.push(
-        `*Price Change*: ${priceChange} (📏 Price movement was limited)`
+        `*Price Change*: ${priceChange} (📏 Price movement was limited)`,
       );
     }
 
@@ -725,11 +725,11 @@ export default class NSEHelper extends NSEDb {
     /* 5️⃣ Price swing range */
     if (rangeRatio > 0.02) {
       points.push(
-        `*RangeRatio*: ${rangeRatio} (📊 Price moved within a wide range)`
+        `*RangeRatio*: ${rangeRatio} (📊 Price moved within a wide range)`,
       );
     } else {
       points.push(
-        `*RangeRatio*: ${rangeRatio} (📊 Price stayed within a narrow range)`
+        `*RangeRatio*: ${rangeRatio} (📊 Price stayed within a narrow range)`,
       );
     }
 
@@ -738,50 +738,50 @@ export default class NSEHelper extends NSEDb {
       points.push(`*VolumeToOI*: ${volumeToOI} (👥 Fewer traders were active)`);
     } else if (volumeToOI <= 0.6) {
       points.push(
-        `*VolumeToOI*: ${volumeToOI} (👥 Normal number of traders active)`
+        `*VolumeToOI*: ${volumeToOI} (👥 Normal number of traders active)`,
       );
     } else {
       points.push(
-        `*VolumeToOI*: ${volumeToOI} (👥 Many traders entered and exited)`
+        `*VolumeToOI*: ${volumeToOI} (👥 Many traders entered and exited)`,
       );
     }
 
     /* 7️⃣ Change in interest */
     if (volumeChange < -0.3) {
       points.push(
-        `*Volume Change*: ${volumeChange} (🔻 Trading interest dropped)`
+        `*Volume Change*: ${volumeChange} (🔻 Trading interest dropped)`,
       );
     } else if (volumeChange > 0.3) {
       points.push(
-        `*Volume Change*: ${volumeChange} (🔺 Trading interest surged)`
+        `*Volume Change*: ${volumeChange} (🔺 Trading interest surged)`,
       );
     } else {
       points.push(
-        `*Volume Change*: ${volumeChange} (➖ Trading interest steady)`
+        `*Volume Change*: ${volumeChange} (➖ Trading interest steady)`,
       );
     }
 
     /* 8️⃣ Hidden buying / selling */
     if (absorption > 0.5) {
       points.push(
-        `*Absorption*: ${absorption} (🧲 Quiet buying or selling by big players)`
+        `*Absorption*: ${absorption} (🧲 Quiet buying or selling by big players)`,
       );
     } else if (absorption < -0.5) {
       points.push(`*Absorption*: ${absorption} (⚠️ Sudden, reactive trading)`);
     } else {
       points.push(
-        `*Absorption*: ${absorption} (🧲 No strong hidden buying or selling)`
+        `*Absorption*: ${absorption} (🧲 No strong hidden buying or selling)`,
       );
     }
 
     /* 9️⃣ Market expectation */
     if (spreadPerc > 0.3) {
       points.push(
-        `*Spread*: ${spreadPerc} (🎯 Market expects prices to go up)`
+        `*Spread*: ${spreadPerc} (🎯 Market expects prices to go up)`,
       );
     } else if (spreadPerc < -0.3) {
       points.push(
-        `*Spread*: ${spreadPerc} (🎯 Market expects prices to go down)`
+        `*Spread*: ${spreadPerc} (🎯 Market expects prices to go down)`,
       );
     } else {
       points.push(`*Spread*: ${spreadPerc} (🎯 Market expects stable prices)`);
@@ -790,15 +790,15 @@ export default class NSEHelper extends NSEDb {
     /* 🔟 Previous day volume change */
     if (previousDayVolumeChange > 1) {
       points.push(
-        `*Previous Day Volume Change*: ${previousDayVolumeChange} (📈 Volume increased compared to previous day)`
+        `*Previous Day Volume Change*: ${previousDayVolumeChange} (📈 Volume increased compared to previous day)`,
       );
     } else if (previousDayVolumeChange < 1) {
       points.push(
-        `*Previous Day Volume Change*: ${previousDayVolumeChange} (📉 Volume decreased compared to previous day)`
+        `*Previous Day Volume Change*: ${previousDayVolumeChange} (📉 Volume decreased compared to previous day)`,
       );
     } else {
       points.push(
-        `*Previous Day Volume Change*: ${previousDayVolumeChange} (➖ Volume stable compared to previous day)`
+        `*Previous Day Volume Change*: ${previousDayVolumeChange} (➖ Volume stable compared to previous day)`,
       );
     }
 
@@ -808,7 +808,7 @@ export default class NSEHelper extends NSEDb {
   public sendSlackAlert = async (processed_data: IProcessedData[]) => {
     const chunks = this.chunkArraySlack(
       processed_data,
-      this.RECORDS_PER_MESSAGE
+      this.RECORDS_PER_MESSAGE,
     ); // ~10 records per message
 
     for (const chunk of chunks) {
@@ -840,7 +840,7 @@ export default class NSEHelper extends NSEDb {
         const points =
           this.interpretMarketAllParamsSimple(stock.meta_data) ?? [];
         const percentageChangeContracts = parseFloat(
-          percentage_change_contracts
+          percentage_change_contracts,
         );
         const differenceInContracts = parseInt(difference_in_contracts);
 
@@ -894,7 +894,7 @@ export default class NSEHelper extends NSEDb {
                 ?.map((point) => `• ${point}`)
                 ?.join("\n")}`,
             },
-          }
+          },
         );
       });
 

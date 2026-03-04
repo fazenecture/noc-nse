@@ -147,6 +147,7 @@ class NSEService extends helper_1.default {
             }
             catch (error) {
                 console.log("error: ", error);
+                return [];
             }
         });
         this.fetchDataService = (obj) => __awaiter(this, void 0, void 0, function* () {
@@ -172,6 +173,7 @@ class NSEService extends helper_1.default {
             }
             catch (error) {
                 console.log("error: ", error);
+                return [];
             }
         });
         this.fetchStocksService = (obj) => __awaiter(this, void 0, void 0, function* () {

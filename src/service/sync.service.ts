@@ -53,7 +53,7 @@ export default class NSESyncService {
 
     const processedChunks = this.nseService.chunkArray(
       processed_data,
-      CHUNK_SIZE
+      CHUNK_SIZE,
     );
     const rawChunks = this.nseService.chunkArray(raw_data, CHUNK_SIZE);
 
@@ -84,18 +84,18 @@ export default class NSESyncService {
 
     const processedChunks = this.nseService.chunkArray(
       processed_data,
-      CHUNK_SIZE
+      CHUNK_SIZE,
     );
 
     const rawChunks = this.nseService.chunkArray(raw_data, CHUNK_SIZE);
 
     await this.nseService.runChunkedParallel(
       processedChunks,
-      this.nseService.insertProcessedDataDb
+      this.nseService.insertProcessedDataDb,
     );
     await this.nseService.runChunkedParallel(
       rawChunks,
-      this.nseService.insertSymbolRawDataDb
+      this.nseService.insertSymbolRawDataDb,
     );
 
     await this.nseService.sendSlackAlert(alert_data);
@@ -123,7 +123,7 @@ export default class NSESyncService {
 
     const processedChunks = this.nseService.chunkArray(
       processed_data,
-      CHUNK_SIZE
+      CHUNK_SIZE,
     );
 
     console.log("processedChunks: ", processedChunks?.length);
@@ -132,24 +132,22 @@ export default class NSESyncService {
     if (processed_data.length) {
       await this.nseService.runChunkedParallel(
         processedChunks,
-        this.nseService.insertProcessedDataDb
+        this.nseService.insertProcessedDataDb,
       );
     }
 
     if (raw_data.length) {
       await this.nseService.runChunkedParallel(
         rawChunks,
-        this.nseService.insertSymbolRawDataDb
+        this.nseService.insertSymbolRawDataDb,
       );
     }
 
-    
     if (alert_data.length > 0) {
       console.log("🐥 Sending Slack Alert!");
       await this.nseService.sendSlackAlert(alert_data);
       console.log("🐥 Sended Slack Alert!");
     }
-    
 
     return {
       message: "✅ Data sync completed successfully!",
@@ -179,7 +177,7 @@ export default class NSESyncService {
     let instrument = INSTRUMENTS.INDEX_FUTURE;
 
     const cookie = await this.nseService.getCookiesFromResponse(
-      URLS.NSE_WEBSITE
+      URLS.NSE_WEBSITE,
     );
     console.log("cookie: ", cookie);
 
@@ -207,7 +205,7 @@ export default class NSESyncService {
 
       if (counter % 25 === 0) {
         const reFetchedCookies = await this.nseService.getCookiesFromResponse(
-          URLS.NSE_WEBSITE
+          URLS.NSE_WEBSITE,
         );
 
         if (!reFetchedCookies?.length || reFetchedCookies === undefined) {
@@ -256,9 +254,15 @@ export default class NSESyncService {
           cookie: this.cookies,
         });
 
-        rawData.push(...data1Day);
-        rawData.push(...data1Week);
-        rawData.push(...data1Month);
+        if (data1Day.length > 0) {
+          rawData.push(...data1Day);
+        }
+        if (data1Week.length > 0) {
+          rawData.push(...data1Week);
+        }
+        if (data1Month.length > 0) {
+          rawData.push(...data1Month);
+        }
 
         const dayOccurrences = this.nseService.checkCondition(data1Day);
         if (dayOccurrences.length > 0) {
@@ -324,7 +328,7 @@ export default class NSESyncService {
     let instrument = INSTRUMENTS.INDEX_FUTURE;
 
     const cookie = await this.nseService.getCookiesFromResponse(
-      URLS.NSE_WEBSITE
+      URLS.NSE_WEBSITE,
     );
 
     if (!cookie?.length || cookie === undefined) {
@@ -349,7 +353,7 @@ export default class NSESyncService {
     for (const symbol of selectedSymbol) {
       if (counter % 25 === 0) {
         const reFetchedCookies = await this.nseService.getCookiesFromResponse(
-          URLS.NSE_WEBSITE
+          URLS.NSE_WEBSITE,
         );
 
         if (!reFetchedCookies?.length || reFetchedCookies === undefined) {
@@ -374,13 +378,14 @@ export default class NSESyncService {
 
       // if the current month is December, also fetch next year expiry dates
       if (moment().month() === 11) {
-        const nextYearExpiryDates = await this.nseService.fetchExpiryDatesService({
-          symbol,
-          instrument,
-          year: year + 1,
-          cookie: this.cookies,
-        }); // Fetch next year expiry dates for the symbol
-  
+        const nextYearExpiryDates =
+          await this.nseService.fetchExpiryDatesService({
+            symbol,
+            instrument,
+            year: year + 1,
+            cookie: this.cookies,
+          }); // Fetch next year expiry dates for the symbol
+
         expiryDates = [...expiryDates, ...nextYearExpiryDates];
       }
 
@@ -408,7 +413,9 @@ export default class NSESyncService {
         const filter1WeekData = this.getFilteredContracts(data1Week);
         console.log("filter1WeekData: ", filter1WeekData);
 
-        rawData.push(...data1Day);
+        if (data1Day.length > 0) {
+          rawData.push(...data1Day);
+        }
 
         const dayOccurrences = this.nseService.checkCondition(filter1WeekData);
         console.log("dayOccurrences: ", dayOccurrences);
@@ -433,7 +440,6 @@ export default class NSESyncService {
     // const dataForCSVExport =
     //   this.nseHelper.flattenAndDeduplicateOccurrencesForCSVExport(results);
 
-    
     // fs.writeFileSync(
     //   `daily_sync_data_for_csv_export_${moment().format("YYYYMMDD")}.json`,
     //   JSON.stringify(dataForCSVExport, null, 2)
@@ -498,9 +504,7 @@ export default class NSESyncService {
 
   private exportDataToCSV = (data: any[], filename: string) => {
     const header = Object.keys(data[0]).join(",") + "\n";
-    const rows = data
-      .map((row) => Object.values(row).join(","))
-      .join("\n");
+    const rows = data.map((row) => Object.values(row).join(",")).join("\n");
     const csvContent = header + rows;
 
     fs.writeFileSync(filename, csvContent);
