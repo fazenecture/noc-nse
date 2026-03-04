@@ -53,7 +53,12 @@ export const API_CONFIG = {
 };
 
 export const EXECUTION_TYPE = {
+  // only executes once when the server is started
   ON_DEMAND: "on_demand",
+
+  // executes the cron job every day at 21:30
   CRON: "cron",
+
+  // executes the job once when the server is started and proceeds with the cron job
   ONE_SYNC_BEFORE_CRON: "one_sync_before_cron",
 };
