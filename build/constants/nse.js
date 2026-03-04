@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.API_CONFIG = exports.URLS = exports.symbols = void 0;
+exports.EXECUTION_TYPE = exports.API_CONFIG = exports.URLS = exports.symbols = void 0;
 exports.symbols = [
     "BANKNIFTY",
     "CNX100",
@@ -44,5 +44,10 @@ exports.API_CONFIG = {
         "sec-fetch-site": "same-origin",
         "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     },
+};
+exports.EXECUTION_TYPE = {
+    ON_DEMAND: "on_demand",
+    CRON: "cron",
+    ONE_SYNC_BEFORE_CRON: "one_sync_before_cron",
 };
 //# sourceMappingURL=nse.js.map

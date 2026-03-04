@@ -51,3 +51,9 @@ export const API_CONFIG = {
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
   },
 };
+
+export const EXECUTION_TYPE = {
+  ON_DEMAND: "on_demand",
+  CRON: "cron",
+  ONE_SYNC_BEFORE_CRON: "one_sync_before_cron",
+};

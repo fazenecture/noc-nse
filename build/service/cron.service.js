@@ -12,6 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const nse_1 = require("../constants/nse");
 const enums_1 = require("../types/enums");
 const slack_utils_1 = require("../utils/slack.utils");
 const sync_service_1 = __importDefault(require("./sync.service"));
@@ -20,16 +21,32 @@ class CRONService {
     constructor() {
         this.errorMessage = (err) => `:rotating_light: *Cron Failure* at ${new Date().toLocaleString()}\n\`\`\`${err.stack || err.message}\`\`\``;
         this.execute = () => __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             try {
                 console.log("CRON: INIT");
-                // cron.schedule("* * * * *", () => {
-                node_cron_1.default.schedule("30 21 * * *", () => __awaiter(this, void 0, void 0, function* () {
-                    console.log("🚀 CRON: Started", new Date().toISOString());
+                if (((_a = process.env) === null || _a === void 0 ? void 0 : _a.EXECUTION_TYPE) === nse_1.EXECUTION_TYPE.ON_DEMAND) {
+                    // execute the cron job manually
+                    console.log("🚀 ON_DEMAND: Started", new Date().toISOString());
                     yield this.nseSyncService.init(enums_1.SYNC_TYPE.DAILY_SYNC);
-                    console.log("✅ CRON: Completed", new Date().toISOString());
-                }), {
-                    timezone: "Asia/Kolkata",
-                });
+                    console.log("✅ ON_DEMAND: Completed", new Date().toISOString());
+                    return;
+                }
+                else {
+                    // execute the job once before the cron job starts
+                    if (((_b = process.env) === null || _b === void 0 ? void 0 : _b.EXECUTION_TYPE) === nse_1.EXECUTION_TYPE.ONE_SYNC_BEFORE_CRON) {
+                        console.log("🚀 ONE_SYNC_BEFORE_CRON: Started", new Date().toISOString());
+                        yield this.nseSyncService.init(enums_1.SYNC_TYPE.DAILY_SYNC);
+                        console.log("✅ ONE_SYNC_BEFORE_CRON: Completed", new Date().toISOString());
+                    }
+                    node_cron_1.default.schedule("30 21 * * *", () => __awaiter(this, void 0, void 0, function* () {
+                        console.log("🚀 CRON: Started", new Date().toISOString());
+                        yield this.nseSyncService.init(enums_1.SYNC_TYPE.DAILY_SYNC);
+                        console.log("✅ CRON: Completed", new Date().toISOString());
+                    }), {
+                        timezone: "Asia/Kolkata",
+                    });
+                }
+                // cron.schedule("* * * * *", () => {
             }
             catch (err) {
                 console.log("❌ CRON: Error ", err);
