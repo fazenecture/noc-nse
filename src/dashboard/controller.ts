@@ -260,6 +260,18 @@ export default class DashboardController extends DashboardService {
     }
   };
 
+  // GET /api/dashboard/expiry-dates ?instrument
+  public getAvailableExpiryDatesController = async (req: Request, res: Response) => {
+    try {
+      const data = await this.getAvailableExpiryDatesService({
+        instrument: this.str(req.query.instrument),
+      });
+      res.status(200).send({ success: true, data });
+    } catch (err) {
+      customErrorHandler(res, err);
+    }
+  };
+
   // ─── Utility: available symbols ───────────────────────────────────────────────
   // GET /api/dashboard/symbols ?instrument
   public getAvailableSymbolsController = async (

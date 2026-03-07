@@ -439,7 +439,11 @@ class DashboardService extends helper_1.default {
         this.getAvailableDatesService = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument, }) {
             return this.getAvailableDatesDb({ instrument });
         });
-        // ─── 12. Available symbols ────────────────────────────────────────────────────
+        // ─── 12. Available expiry dates ──────────────────────────────────────────────────────
+        this.getAvailableExpiryDatesService = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument, }) {
+            return this.getAvailableExpiryDatesDb({ instrument });
+        });
+        // ─── 13. Available symbols ────────────────────────────────────────────────────
         this.getAvailableSymbolsService = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument, }) {
             return this.getAvailableSymbolsDb({ instrument });
         });

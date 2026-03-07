@@ -111,6 +111,17 @@ class DashboardDb {
        ORDER BY to_date(occurrence_date, 'DD-MM-YYYY') DESC`, params);
             return rows.map((r) => r.occurrence_date);
         });
+        // ─── Utility: distinct expiry dates ──────────────────────────────────────
+        this.getAvailableExpiryDatesDb = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument, }) {
+            const params = [];
+            const where = instrument ? `WHERE instrument = $1` : "";
+            if (instrument)
+                params.push(instrument);
+            const { rows } = yield postgres_1.default.query(`SELECT expiry_date
+       FROM (SELECT DISTINCT expiry_date FROM processed_data ${where}) AS dates
+       ORDER BY to_date(expiry_date, 'DD-MM-YYYY') DESC`, params);
+            return rows.map((r) => r.expiry_date);
+        });
         // ─── Utility: distinct symbols ───────────────────────────────────────────────
         this.getAvailableSymbolsDb = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument, }) {
             const params = [];

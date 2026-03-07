@@ -16,6 +16,7 @@ const {
   getCrossExpiryController,
   getAvailableDatesController,
   getAvailableSymbolsController,
+  getAvailableExpiryDatesController
 } = new DashboardController();
 
 // ─── Scanner APIs ─────────────────────────────────────────────────────────────
@@ -35,5 +36,6 @@ router.get("/cross-expiry/:symbol", getCrossExpiryController);
 // ─── Utilities ────────────────────────────────────────────────────────────────
 router.get("/dates", getAvailableDatesController);
 router.get("/symbols", getAvailableSymbolsController);
+router.get("/expiry-dates", getAvailableExpiryDatesController)
 
 export default router;

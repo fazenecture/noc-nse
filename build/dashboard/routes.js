@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const controller_1 = __importDefault(require("./controller"));
 const router = (0, express_1.Router)();
-const { getScannerController, getSurgesController, getDistributionController, getTrendController, getAbsorptionController, getSpreadController, getVolumeOIController, getStreaksController, getExpiryCycleController, getCrossExpiryController, getAvailableDatesController, getAvailableSymbolsController, } = new controller_1.default();
+const { getScannerController, getSurgesController, getDistributionController, getTrendController, getAbsorptionController, getSpreadController, getVolumeOIController, getStreaksController, getExpiryCycleController, getCrossExpiryController, getAvailableDatesController, getAvailableSymbolsController, getAvailableExpiryDatesController } = new controller_1.default();
 // ─── Scanner APIs ─────────────────────────────────────────────────────────────
 router.get("/scanner", getScannerController);
 router.get("/surges", getSurgesController);
@@ -22,5 +22,6 @@ router.get("/cross-expiry/:symbol", getCrossExpiryController);
 // ─── Utilities ────────────────────────────────────────────────────────────────
 router.get("/dates", getAvailableDatesController);
 router.get("/symbols", getAvailableSymbolsController);
+router.get("/expiry-dates", getAvailableExpiryDatesController);
 exports.default = router;
 //# sourceMappingURL=routes.js.map

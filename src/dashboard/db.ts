@@ -175,6 +175,24 @@ export default class DashboardDb {
     return rows.map((r: any) => r.occurrence_date);
   };
 
+  // ─── Utility: distinct expiry dates ──────────────────────────────────────
+  protected getAvailableExpiryDatesDb = async ({
+    instrument,
+  }: IGetByInstrumentParams): Promise<string[]> => {
+    const params: any[] = [];
+    const where = instrument ? `WHERE instrument = $1` : "";
+    if (instrument) params.push(instrument);
+
+    const { rows } = await db.query(
+      `SELECT expiry_date
+       FROM (SELECT DISTINCT expiry_date FROM processed_data ${where}) AS dates
+       ORDER BY to_date(expiry_date, 'DD-MM-YYYY') DESC`,
+      params,
+    );
+
+    return rows.map((r: any) => r.expiry_date);
+  };
+
   // ─── Utility: distinct symbols ───────────────────────────────────────────────
   protected getAvailableSymbolsDb = async ({
     instrument,

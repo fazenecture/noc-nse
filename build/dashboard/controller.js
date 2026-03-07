@@ -235,6 +235,18 @@ class DashboardController extends service_1.default {
                 (0, custom_error_handler_1.default)(res, err);
             }
         });
+        // GET /api/dashboard/expiry-dates ?instrument
+        this.getAvailableExpiryDatesController = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const data = yield this.getAvailableExpiryDatesService({
+                    instrument: this.str(req.query.instrument),
+                });
+                res.status(200).send({ success: true, data });
+            }
+            catch (err) {
+                (0, custom_error_handler_1.default)(res, err);
+            }
+        });
         // ─── Utility: available symbols ───────────────────────────────────────────────
         // GET /api/dashboard/symbols ?instrument
         this.getAvailableSymbolsController = (req, res) => __awaiter(this, void 0, void 0, function* () {

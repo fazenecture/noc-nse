@@ -527,7 +527,16 @@ export default class DashboardService extends DashboardHelper {
     return this.getAvailableDatesDb({ instrument });
   };
 
-  // ─── 12. Available symbols ────────────────────────────────────────────────────
+  // ─── 12. Available expiry dates ──────────────────────────────────────────────────────
+  protected getAvailableExpiryDatesService = async ({
+    instrument,
+  }: {
+    instrument?: string;
+  }) => {
+    return this.getAvailableExpiryDatesDb({ instrument });
+  };
+
+  // ─── 13. Available symbols ────────────────────────────────────────────────────
   protected getAvailableSymbolsService = async ({
     instrument,
   }: {
