@@ -95,7 +95,7 @@ export default class DashboardService extends DashboardHelper {
   };
 
   // ─── 2. Surge Feed ────────────────────────────────────────────────────────────
-  protected getSurgesService = async (query: ISurgeQuery) => {
+  protected getSurgesService = async (query: ISurgeQuery): Promise<any> => {
     const {
       min_surge_percent = 150,
       require_positive_oi = true,
@@ -105,26 +105,24 @@ export default class DashboardService extends DashboardHelper {
     const date = await this.resolveDate(query.date);
     if (!date) return null;
 
-    const rawRows = await this.getScannerRows({ date });
-    let rows = rawRows.map(this.enrichRow);
+    const [rawRows, total_surges] = await Promise.all([
+      this.getSurgeRows({
+        date,
+        min_surge_percent,
+        require_positive_oi,
+        limit,
+      }),
+      this.getSurgeCount({ date, min_surge_percent, require_positive_oi }),
+    ]);
 
-    rows = rows.filter((r) => {
-      const surgeOk = r.pct_change_numeric >= min_surge_percent;
-      const oiOk = require_positive_oi ? r.change_in_oi > 0 : true;
-      return surgeOk && oiOk;
-    });
-
-    rows.sort((a, b) => {
-      if (a.pct_change_numeric !== b.pct_change_numeric) {
-        return b.pct_change_numeric - a.pct_change_numeric;
-      }
-      return b.change_in_oi - a.change_in_oi;
-    });
+    const metaData = {
+      date,
+      total_surges,
+    };
 
     return {
-      date,
-      total_surges: rows.length,
-      data: rows.slice(0, limit).map((r) => ({
+      meta_data: metaData,
+      data: rawRows.map(this.enrichRow).map((r) => ({
         symbol: r.name,
         instrument: r.instrument,
         expiry_date: r.expiry_date,

@@ -52,7 +52,7 @@ export default class DashboardController extends DashboardService {
     try {
       const { date, min_surge_percent, require_positive_oi, limit } = req.query;
 
-      const data = await this.getSurgesService({
+      const { data, meta_data } = await this.getSurgesService({
         date: this.str(date),
         min_surge_percent: this.num(min_surge_percent) ?? 150,
         require_positive_oi:
@@ -62,7 +62,7 @@ export default class DashboardController extends DashboardService {
         limit: this.int(limit, 20),
       });
 
-      res.status(200).send({ success: true, data });
+      res.status(200).send({ success: true, meta_data, data });
     } catch (err) {
       customErrorHandler(res, err);
     }
@@ -261,7 +261,10 @@ export default class DashboardController extends DashboardService {
   };
 
   // GET /api/dashboard/expiry-dates ?instrument
-  public getAvailableExpiryDatesController = async (req: Request, res: Response) => {
+  public getAvailableExpiryDatesController = async (
+    req: Request,
+    res: Response,
+  ) => {
     try {
       const data = await this.getAvailableExpiryDatesService({
         instrument: this.str(req.query.instrument),

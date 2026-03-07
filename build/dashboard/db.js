@@ -26,6 +26,28 @@ class DashboardDb {
             const { rows } = yield postgres_1.default.query(`SELECT * FROM processed_data WHERE ${where} ORDER BY created_at DESC`, params);
             return rows;
         });
+        this.getSurgeRows = (_a) => __awaiter(this, [_a], void 0, function* ({ date, min_surge_percent, require_positive_oi, limit, }) {
+            const oiClause = require_positive_oi ? `AND change_in_oi > 0` : "";
+            const { rows } = yield postgres_1.default.query(`SELECT *
+     FROM processed_data
+     WHERE occurrence_date = $1
+       AND percentage_change_contracts::numeric >= $2
+       AND percentage_change_contracts <> 'Infinity'
+       ${oiClause}
+     ORDER BY percentage_change_contracts::numeric DESC,
+              change_in_oi DESC
+     LIMIT $3`, [date, min_surge_percent, limit]);
+            return rows;
+        });
+        this.getSurgeCount = (_a) => __awaiter(this, [_a], void 0, function* ({ date, min_surge_percent, require_positive_oi, }) {
+            const oiClause = require_positive_oi ? `AND change_in_oi > 0` : "";
+            const { rows } = yield postgres_1.default.query(`SELECT COUNT(*)::int AS count
+     FROM processed_data
+     WHERE occurrence_date = $1
+       AND percentage_change_contracts::numeric >= $2
+       ${oiClause}`, [date, min_surge_percent]);
+            return rows[0].count;
+        });
         // ─── Trend: time-series rows for one symbol ───────────────────────────────────
         this.getTrendRows = (_a) => __awaiter(this, [_a], void 0, function* ({ symbol, fromDate, toDate, instrument, expiryDate, }) {
             const params = [symbol, fromDate, toDate];

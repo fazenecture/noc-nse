@@ -31,6 +31,53 @@ export default class DashboardDb {
     return rows as unknown as IProcessedDataRow[];
   };
 
+  protected getSurgeRows = async ({
+    date,
+    min_surge_percent,
+    require_positive_oi,
+    limit,
+  }: {
+    date: string;
+    min_surge_percent: number;
+    require_positive_oi: boolean;
+    limit: number;
+  }): Promise<IProcessedDataRow[]> => {
+    const oiClause = require_positive_oi ? `AND change_in_oi > 0` : "";
+    const { rows } = await db.query(
+      `SELECT *
+     FROM processed_data
+     WHERE occurrence_date = $1
+       AND percentage_change_contracts::numeric >= $2
+       AND percentage_change_contracts <> 'Infinity'
+       ${oiClause}
+     ORDER BY percentage_change_contracts::numeric DESC,
+              change_in_oi DESC
+     LIMIT $3`,
+      [date, min_surge_percent, limit],
+    );
+    return rows as unknown as any;
+  };
+  protected getSurgeCount = async ({
+    date,
+    min_surge_percent,
+    require_positive_oi,
+  }: {
+    date: string;
+    min_surge_percent: number;
+    require_positive_oi: boolean;
+  }) => {
+    const oiClause = require_positive_oi ? `AND change_in_oi > 0` : "";
+    const { rows } = await db.query(
+      `SELECT COUNT(*)::int AS count
+     FROM processed_data
+     WHERE occurrence_date = $1
+       AND percentage_change_contracts::numeric >= $2
+       ${oiClause}`,
+      [date, min_surge_percent],
+    );
+    return (rows[0] as any).count as number;
+  };
+
   // ─── Trend: time-series rows for one symbol ───────────────────────────────────
   protected getTrendRows = async ({
     symbol,

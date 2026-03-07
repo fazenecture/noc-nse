@@ -49,7 +49,7 @@ class DashboardController extends service_1.default {
             var _a;
             try {
                 const { date, min_surge_percent, require_positive_oi, limit } = req.query;
-                const data = yield this.getSurgesService({
+                const { data, meta_data } = yield this.getSurgesService({
                     date: this.str(date),
                     min_surge_percent: (_a = this.num(min_surge_percent)) !== null && _a !== void 0 ? _a : 150,
                     require_positive_oi: require_positive_oi !== undefined
@@ -57,7 +57,7 @@ class DashboardController extends service_1.default {
                         : true,
                     limit: this.int(limit, 20),
                 });
-                res.status(200).send({ success: true, data });
+                res.status(200).send({ success: true, meta_data, data });
             }
             catch (err) {
                 (0, custom_error_handler_1.default)(res, err);
