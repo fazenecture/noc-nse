@@ -43,7 +43,7 @@ export default class DashboardDb {
     limit = 50,
   }: IGetScannerRowsParams): Promise<IProcessedDataRow[]> => {
     const params: any[] = [date];
-    const clauses: string[] = [`occurrence_date = $1`];
+    const clauses: string[] = [`occurrence_date = $1`, `percentage_change_contracts <> 'Infinity'`];
 
     if (instrument) {
       params.push(instrument);
@@ -88,7 +88,7 @@ export default class DashboardDb {
     "date" | "instrument" | "buildup_types" | "min_contract_change"
   >): Promise<{ total_count: number; distribution: Record<string, number> }> => {
     const params: any[] = [date];
-    const clauses: string[] = [`occurrence_date = $1`];
+    const clauses: string[] = [`occurrence_date = $1`, `percentage_change_contracts <> 'Infinity'`];
 
     if (instrument) {
       params.push(instrument);
@@ -142,6 +142,7 @@ export default class DashboardDb {
        FROM processed_data
        WHERE occurrence_date = $1
          AND percentage_change_contracts::numeric >= $2
+         AND percentage_change_contracts <> 'Infinity'
          ${oiClause}
        ORDER BY percentage_change_contracts::numeric DESC,
                 change_in_oi DESC
@@ -169,6 +170,7 @@ export default class DashboardDb {
        FROM processed_data
        WHERE occurrence_date = $1
          AND percentage_change_contracts::numeric >= $2
+         AND percentage_change_contracts <> 'Infinity'
          ${oiClause}`,
       params,
     );
