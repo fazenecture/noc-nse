@@ -54,7 +54,6 @@ const index_routes_1 = __importDefault(require("./routes/index.routes"));
 const cron_service_1 = __importDefault(require("./service/cron.service"));
 const app = (0, express_1.default)();
 const allowedOrigins = [
-    "*",
     "https://id-preview--f474d5af-0fd1-466d-8888-c26feafaad48.lovable.app",
     "https://nocnse.lovable.app",
 ];

@@ -10,7 +10,6 @@ import { Request, Response } from "express";
 const app: Application = express();
 
 const allowedOrigins = [
-  "*",
   "https://id-preview--f474d5af-0fd1-466d-8888-c26feafaad48.lovable.app",
   "https://nocnse.lovable.app",
 ];
