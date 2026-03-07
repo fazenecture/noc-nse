@@ -1,5 +1,10 @@
 import DashboardHelper from "./helper";
-import { ScannerSortBy } from "./types/enums";
+import {
+  ScannerSortBy,
+  AbsorptionSortBy,
+  VolumeOISortBy,
+  SortOrder,
+} from "./types/enums";
 import {
   IEnrichedRow,
   IScannerQuery,
@@ -15,14 +20,16 @@ import {
 } from "./types/interface";
 
 export default class DashboardService extends DashboardHelper {
-  // ─── 1. Scanner Table ─────────────────────────────────────────────────────────
+  // ─── 1. Scanner Table ─────────────────────────────────────────────────────
+  // Filtering, sorting and pagination all happen in Postgres.
+  // Two parallel queries: paginated data + summary (count + distribution).
   protected getScannerService = async (query: IScannerQuery) => {
     const {
       instrument,
       buildup_type,
       min_contract_change,
       sort_by = ScannerSortBy.PERCENTAGE_CHANGE,
-      sort_order = "desc",
+      sort_order = SortOrder.DESC,
       page = 1,
       limit = 50,
     } = query;
@@ -30,53 +37,43 @@ export default class DashboardService extends DashboardHelper {
     const date = await this.resolveDate(query.date, instrument);
     if (!date) return null;
 
-    const rawRows = await this.getScannerRows({ date, instrument });
-    let rows = rawRows.map(this.enrichRow);
+    // Parse comma-separated buildup_type string → string[]
+    const buildup_types = buildup_type
+      ? buildup_type
+          .toLowerCase()
+          .split(",")
+          .map((s) => s.trim())
+      : undefined;
 
-    if (buildup_type) {
-      const types = buildup_type
-        .toLowerCase()
-        .split(",")
-        .map((s) => s.trim());
-      rows = rows.filter((r) => types.includes(r.meta.buildup_type));
-    }
+    const [rawRows, { total_count, distribution }] = await Promise.all([
+      this.getScannerRows({
+        date,
+        instrument,
+        buildup_types,
+        min_contract_change,
+        sort_by,
+        sort_order,
+        page,
+        limit,
+      }),
+      this.getScannerSummary({
+        date,
+        instrument,
+        buildup_types,
+        min_contract_change,
+      }),
+    ]);
 
-    if (min_contract_change !== undefined) {
-      rows = rows.filter((r) => r.pct_change_numeric >= min_contract_change);
-    }
-
-    rows.sort((a, b) => {
-      let aVal: number;
-      let bVal: number;
-      switch (sort_by) {
-        case ScannerSortBy.ABSORPTION_SCORE:
-          aVal = this.safeFloat(a.meta.absorptionScore);
-          bVal = this.safeFloat(b.meta.absorptionScore);
-          break;
-        case ScannerSortBy.VOLUME_TO_OI:
-          aVal = this.safeFloat(a.meta.volumeToOI);
-          bVal = this.safeFloat(b.meta.volumeToOI);
-          break;
-        case ScannerSortBy.CHANGE_IN_OI:
-          aVal = a.change_in_oi;
-          bVal = b.change_in_oi;
-          break;
-        default:
-          aVal = a.pct_change_numeric;
-          bVal = b.pct_change_numeric;
-      }
-      return sort_order === "desc" ? bVal - aVal : aVal - bVal;
-    });
-
-    const { distribution, sentimentScore } = this.buildDistribution(rows);
+    const rows = rawRows.map(this.enrichRow);
+    const sentimentScore = this.calcSentimentScore(distribution, total_count);
 
     return {
       date,
-      total_count: rows.length,
+      total_count,
       page,
       limit,
       summary: { ...distribution, sentiment_score: sentimentScore },
-      data: this.paginate(rows, page, limit).map((r) => ({
+      data: rows.map((r) => ({
         id: r.id,
         symbol: r.name,
         instrument: r.instrument,
@@ -94,7 +91,7 @@ export default class DashboardService extends DashboardHelper {
     };
   };
 
-  // ─── 2. Surge Feed ────────────────────────────────────────────────────────────
+  // ─── 2. Surge Feed ────────────────────────────────────────────────────────
   protected getSurgesService = async (query: ISurgeQuery): Promise<any> => {
     const {
       min_surge_percent = 150,
@@ -115,13 +112,8 @@ export default class DashboardService extends DashboardHelper {
       this.getSurgeCount({ date, min_surge_percent, require_positive_oi }),
     ]);
 
-    const metaData = {
-      date,
-      total_surges,
-    };
-
     return {
-      meta_data: metaData,
+      meta_data: { date, total_surges },
       data: rawRows.map(this.enrichRow).map((r) => ({
         symbol: r.name,
         instrument: r.instrument,
@@ -138,7 +130,8 @@ export default class DashboardService extends DashboardHelper {
     };
   };
 
-  // ─── 3. Distribution Chart ────────────────────────────────────────────────────
+  // ─── 3. Distribution Chart ────────────────────────────────────────────────
+  // Full universe always fetched — filtering would corrupt the sentiment ratio.
   protected getDistributionService = async (query: IDistributionQuery) => {
     const { instrument, from, to } = query;
 
@@ -175,13 +168,16 @@ export default class DashboardService extends DashboardHelper {
     const date = await this.resolveDate(query.date, instrument);
     if (!date) return null;
 
-    const rawRows = await this.getScannerRows({ date, instrument });
-    const rows = rawRows.map(this.enrichRow);
-    const { distribution, sentimentScore } = this.buildDistribution(rows);
+    // Single-date: re-use getScannerSummary — same query, no row transfer needed
+    const { distribution, total_count } = await this.getScannerSummary({
+      date,
+      instrument,
+    });
+    const sentimentScore = this.calcSentimentScore(distribution, total_count);
     return { date, distribution, sentiment_score: sentimentScore };
   };
 
-  // ─── 4. OI + Price Trend Overlay ─────────────────────────────────────────────
+  // ─── 4. OI + Price Trend Overlay ─────────────────────────────────────────
   protected getTrendService = async (query: ITrendQuery) => {
     const { symbol, instrument, expiry_date } = query;
 
@@ -226,38 +222,30 @@ export default class DashboardService extends DashboardHelper {
     };
   };
 
-  // ─── 5. Absorption Score Tracker ──────────────────────────────────────────────
+  // ─── 5. Absorption Score Tracker ──────────────────────────────────────────
+  // Filtering + sorting + limit all pushed to Postgres via getAbsorptionRows.
   protected getAbsorptionService = async (query: IAbsorptionQuery) => {
     const {
       instrument,
       min_score,
-      sort_by = "absorptionScore",
+      sort_by = AbsorptionSortBy.ABSORPTION_SCORE,
       limit = 20,
     } = query;
 
     const date = await this.resolveDate(query.date, instrument);
     if (!date) return null;
 
-    const rawRows = await this.getScannerRows({ date, instrument });
-    let rows = rawRows.map(this.enrichRow);
-
-    if (min_score !== undefined) {
-      rows = rows.filter(
-        (r) => this.safeFloat(r.meta.absorptionScore) >= min_score,
-      );
-    }
-
-    rows.sort((a, b) =>
-      sort_by === "volumeChangePercent"
-        ? this.safeFloat(b.meta.volumeChangePerc) -
-          this.safeFloat(a.meta.volumeChangePerc)
-        : this.safeFloat(b.meta.absorptionScore) -
-          this.safeFloat(a.meta.absorptionScore),
-    );
+    const rawRows = await this.getAbsorptionRows({
+      date,
+      instrument,
+      min_score,
+      sort_by,
+      limit,
+    });
 
     return {
       date,
-      data: rows.slice(0, limit).map((r) => {
+      data: rawRows.map(this.enrichRow).map((r) => {
         const score = this.safeFloat(r.meta.absorptionScore);
         const priceReturn = this.safeFloat(r.meta.priceReturn1D);
         return {
@@ -274,7 +262,9 @@ export default class DashboardService extends DashboardHelper {
     };
   };
 
-  // ─── 6. FutSpot Spread Monitor ────────────────────────────────────────────────
+  // ─── 6. FutSpot Spread Monitor ────────────────────────────────────────────
+  // universe_mean and universe_std come from Postgres window functions —
+  // no second pass or manual stddev calculation needed in Node.
   protected getSpreadService = async (query: ISpreadQuery) => {
     const {
       instrument,
@@ -285,27 +275,26 @@ export default class DashboardService extends DashboardHelper {
     const date = await this.resolveDate(query.date, instrument);
     if (!date) return null;
 
-    const rawRows = await this.getScannerRows({ date, instrument });
-    const rows = rawRows.map(this.enrichRow);
+    const rawRows = await this.getSpreadRows({ date, instrument });
+    if (!rawRows.length) return null;
 
-    const spreadValues = rows.map((r) =>
-      this.safeFloat(r.meta.futSpotSpreadPerc),
-    );
-    const mean =
-      spreadValues.reduce((a, b) => a + b, 0) / (spreadValues.length || 1);
-    const std = this.stdDev(spreadValues);
+    // universe_mean and universe_std are identical on every row (window fn result)
+    const { universe_mean: mean, universe_std: std } = rawRows[0];
 
-    let enriched = rows.map((r) => {
-      const spreadPercent = this.safeFloat(r.meta.futSpotSpreadPerc);
+    let enriched = rawRows.map(this.enrichRow).map((r, i) => {
+      const spreadPercent = this.safeFloat(
+        (rawRows[i] as any).meta_data?.futSpotSpreadPerc ??
+          r.meta.futSpotSpreadPerc,
+      );
       const spread = this.safeFloat(r.meta.futSpotSpread);
-      const z = this.zScore(spreadPercent, mean, std);
+      const z = this.zScore(spreadPercent, Number(mean), Number(std));
       return {
         symbol: r.name,
         instrument: r.instrument,
         expiry_date: r.expiry_date,
         fut_spot_spread: spread,
         fut_spot_spread_percent: spreadPercent,
-        spread_z_score: z,
+        spread_z_score: parseFloat(z.toFixed(4)),
         is_outlier: Math.abs(z) > 2,
         market_expectation: spread > 0 ? "BULLISH" : "BEARISH",
         buildup_type: r.meta.buildup_type,
@@ -323,39 +312,37 @@ export default class DashboardService extends DashboardHelper {
 
     return {
       date,
-      mean_spread_percent: parseFloat(mean.toFixed(4)),
-      std_dev_spread: parseFloat(std.toFixed(4)),
+      mean_spread_percent: parseFloat(Number(mean).toFixed(4)),
+      std_dev_spread: parseFloat(Number(std).toFixed(4)),
       data: enriched,
     };
   };
 
-  // ─── 7. Volume-to-OI Screener ─────────────────────────────────────────────────
+  // ─── 7. Volume-to-OI Screener ─────────────────────────────────────────────
+  // Filtering + sorting pushed to Postgres. Full set returned (no limit)
+  // so churn category distribution counts are accurate.
   protected getVolumeOIService = async (query: IVolumeOIQuery) => {
-    const { instrument, min_ratio, max_ratio, sort_by = "volumeToOI" } = query;
+    const {
+      instrument,
+      min_ratio,
+      max_ratio,
+      sort_by = VolumeOISortBy.VOLUME_TO_OI,
+    } = query;
 
     const date = await this.resolveDate(query.date, instrument);
     if (!date) return null;
 
-    const rawRows = await this.getScannerRows({ date, instrument });
-    let rows = rawRows.map(this.enrichRow);
-
-    if (min_ratio !== undefined) {
-      rows = rows.filter((r) => this.safeFloat(r.meta.volumeToOI) >= min_ratio);
-    }
-    if (max_ratio !== undefined) {
-      rows = rows.filter((r) => this.safeFloat(r.meta.volumeToOI) <= max_ratio);
-    }
-
-    rows.sort((a, b) =>
-      sort_by === "volumeChangePercent"
-        ? this.safeFloat(b.meta.volumeChangePerc) -
-          this.safeFloat(a.meta.volumeChangePerc)
-        : this.safeFloat(b.meta.volumeToOI) - this.safeFloat(a.meta.volumeToOI),
-    );
+    const rawRows = await this.getVolumeOIRows({
+      date,
+      instrument,
+      min_ratio,
+      max_ratio,
+      sort_by,
+    });
 
     return {
       date,
-      data: rows.map((r) => {
+      data: rawRows.map(this.enrichRow).map((r) => {
         const ratio = this.safeFloat(r.meta.volumeToOI);
         return {
           symbol: r.name,
@@ -371,7 +358,8 @@ export default class DashboardService extends DashboardHelper {
     };
   };
 
-  // ─── 8. Multi-Day Buildup Streaks ─────────────────────────────────────────────
+  // ─── 8. Multi-Day Buildup Streaks ─────────────────────────────────────────
+  // Streak logic is inherently sequential — stays in Node.
   protected getStreaksService = async (query: IStreakQuery) => {
     const { instrument, min_streak_days = 3, buildup_type } = query;
 
@@ -402,14 +390,14 @@ export default class DashboardService extends DashboardHelper {
 
       let streakDays = 0;
       let totalOIChange = 0;
-      let totalPriceChange = 0;
+      let totalPrice = 0;
       let absorptionSum = 0;
 
       for (const row of symbolRows) {
         if (row.meta.buildup_type !== currentType) break;
         streakDays++;
         totalOIChange += row.change_in_oi;
-        totalPriceChange += this.safeFloat(row.meta.priceChange);
+        totalPrice += this.safeFloat(row.meta.priceChange);
         absorptionSum += this.safeFloat(row.meta.absorptionScore);
       }
 
@@ -423,7 +411,7 @@ export default class DashboardService extends DashboardHelper {
         streak_days: streakDays,
         streak_start_date: symbolRows[streakDays - 1].occurrence_date,
         total_oi_change: totalOIChange,
-        cumulative_price_change: parseFloat(totalPriceChange.toFixed(3)),
+        cumulative_price_change: parseFloat(totalPrice.toFixed(3)),
         average_absorption: parseFloat((absorptionSum / streakDays).toFixed(3)),
         streak_strength: this.classifyStreakStrength(streakDays),
       });
@@ -433,7 +421,7 @@ export default class DashboardService extends DashboardHelper {
     return { as_of: asOf, data: streaks };
   };
 
-  // ─── 9. Expiry Cycle Analysis ─────────────────────────────────────────────────
+  // ─── 9. Expiry Cycle Analysis ─────────────────────────────────────────────
   protected getExpiryCycleService = async (query: IExpiryCycleQuery) => {
     const { symbol, expiry_date, instrument } = query;
 
@@ -474,7 +462,7 @@ export default class DashboardService extends DashboardHelper {
     };
   };
 
-  // ─── 10. Cross-Expiry Comparison ──────────────────────────────────────────────
+  // ─── 10. Cross-Expiry Comparison ──────────────────────────────────────────
   protected getCrossExpiryService = async (query: ICrossExpiryQuery) => {
     const { symbol, instrument } = query;
 
@@ -516,30 +504,24 @@ export default class DashboardService extends DashboardHelper {
     };
   };
 
-  // ─── 11. Available dates ──────────────────────────────────────────────────────
+  // ─── 11. Available dates ──────────────────────────────────────────────────
   protected getAvailableDatesService = async ({
     instrument,
   }: {
     instrument?: string;
-  }) => {
-    return this.getAvailableDatesDb({ instrument });
-  };
+  }) => this.getAvailableDatesDb({ instrument });
 
-  // ─── 12. Available expiry dates ──────────────────────────────────────────────────────
+  // ─── 12. Available expiry dates ───────────────────────────────────────────
   protected getAvailableExpiryDatesService = async ({
     instrument,
   }: {
     instrument?: string;
-  }) => {
-    return this.getAvailableExpiryDatesDb({ instrument });
-  };
+  }) => this.getAvailableExpiryDatesDb({ instrument });
 
-  // ─── 13. Available symbols ────────────────────────────────────────────────────
+  // ─── 13. Available symbols ────────────────────────────────────────────────
   protected getAvailableSymbolsService = async ({
     instrument,
   }: {
     instrument?: string;
-  }) => {
-    return this.getAvailableSymbolsDb({ instrument });
-  };
+  }) => this.getAvailableSymbolsDb({ instrument });
 }

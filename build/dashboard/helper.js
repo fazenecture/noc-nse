@@ -187,6 +187,12 @@ class DashboardHelper extends db_1.default {
                 d.getFullYear(),
             ].join("-");
         };
+        this.calcSentimentScore = (distribution, total) => {
+            var _a, _b;
+            const bullish = ((_a = distribution["long_buildup"]) !== null && _a !== void 0 ? _a : 0) +
+                ((_b = distribution["short_covering"]) !== null && _b !== void 0 ? _b : 0);
+            return total > 0 ? parseFloat((bullish / total).toFixed(4)) : 0;
+        };
     }
 }
 exports.default = DashboardHelper;

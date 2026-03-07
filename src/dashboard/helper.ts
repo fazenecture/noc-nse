@@ -195,4 +195,14 @@ export default class DashboardHelper extends DashboardDb {
       d.getFullYear(),
     ].join("-");
   };
+
+  protected calcSentimentScore = (
+    distribution: Record<string, number>,
+    total: number,
+  ): number => {
+    const bullish =
+      (distribution["long_buildup"] ?? 0) +
+      (distribution["short_covering"] ?? 0);
+    return total > 0 ? parseFloat((bullish / total).toFixed(4)) : 0;
+  };
 }

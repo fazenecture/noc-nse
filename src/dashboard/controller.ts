@@ -4,6 +4,7 @@ import DashboardService from "./service";
 import { Request, Response } from "express";
 import {
   AbsorptionSortBy,
+  ScannerSortBy,
   SortOrder,
   SpreadSortBy,
   VolumeOISortBy,
@@ -31,7 +32,7 @@ export default class DashboardController extends DashboardService {
         instrument: this.str(instrument),
         buildup_type: this.str(buildup_type),
         min_contract_change: this.num(min_contract_change),
-        sort_by: this.str(sort_by),
+        sort_by: this.str(sort_by) as ScannerSortBy,
         sort_order:
           sort_order === SortOrder.ASC ? SortOrder.ASC : SortOrder.DESC,
         page: this.int(page, 1),

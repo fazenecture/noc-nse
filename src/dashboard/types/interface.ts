@@ -1,3 +1,14 @@
+import {
+  SortOrder,
+  ScannerSortBy,
+  AbsorptionSortBy,
+  SpreadSortBy,
+  VolumeOISortBy,
+} from './enums';
+
+// Re-export so consumers only need to import from types
+export { SortOrder, ScannerSortBy, AbsorptionSortBy, SpreadSortBy, VolumeOISortBy };
+
 // ─── Exact shape of a row from processed_data table ─────────────────────────
 export interface IProcessedDataRow {
   id: string;
@@ -44,15 +55,13 @@ export type BuildupType =
   | 'long_unwinding'
   | 'indecisive';
 
-export type SortOrder = 'asc' | 'desc';
-
 // ─── Query param interfaces per endpoint ─────────────────────────────────────
 export interface IScannerQuery {
   date?: string;
   instrument?: string;
   buildup_type?: string;       // comma-separated: "long_buildup,short_buildup"
   min_contract_change?: number;
-  sort_by?: string;
+  sort_by?: ScannerSortBy;
   sort_order?: SortOrder;
   page?: number;
   limit?: number;
@@ -84,14 +93,14 @@ export interface IAbsorptionQuery {
   date?: string;
   instrument?: string;
   min_score?: number;
-  sort_by?: 'absorptionScore' | 'volumeChangePercent';
+  sort_by?: AbsorptionSortBy;
   limit?: number;
 }
 
 export interface ISpreadQuery {
   date?: string;
   instrument?: string;
-  sort_by?: 'futSpotSpreadPercent' | 'futSpotSpread';
+  sort_by?: SpreadSortBy;
   outlier_only?: boolean;
 }
 
@@ -100,7 +109,7 @@ export interface IVolumeOIQuery {
   instrument?: string;
   min_ratio?: number;
   max_ratio?: number;
-  sort_by?: 'volumeToOI' | 'volumeChangePercent';
+  sort_by?: VolumeOISortBy;
 }
 
 export interface IStreakQuery {
@@ -126,6 +135,13 @@ export interface ICrossExpiryQuery {
 export interface IGetScannerRowsParams {
   date: string;
   instrument?: string;
+  // Pushed down from service into DB — filters, sort and pagination in Postgres
+  buildup_types?: string[];        // parsed array from comma-separated buildup_type param
+  min_contract_change?: number;    // WHERE percentage_change_contracts::numeric >= n
+  sort_by?: ScannerSortBy;         // maps to SQL column expression via SCANNER_SORT_COL
+  sort_order?: SortOrder;          // ASC | DESC
+  page?: number;                   // OFFSET = (page - 1) * limit
+  limit?: number;                  // LIMIT n
 }
 
 export interface IGetTrendRowsParams {
