@@ -21,7 +21,6 @@ const customErrorHandler = (res, error) => __awaiter(void 0, void 0, void 0, fun
     //   error["Error"],
     //   error.toString()
     // );
-    console.log(`"❌ Error: ", ${error}`);
     if (error instanceof joi_1.ValidationError) {
         return res.header({ "x-frame-options": "deny" }).status(400).json({
             success: false,

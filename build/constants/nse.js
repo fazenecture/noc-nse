@@ -52,5 +52,7 @@ exports.EXECUTION_TYPE = {
     CRON: "cron",
     // executes the job once when the server is started and proceeds with the cron job
     ONE_SYNC_BEFORE_CRON: "one_sync_before_cron",
+    // don't execute the CRON
+    NONE: 'none'
 };
 //# sourceMappingURL=nse.js.map

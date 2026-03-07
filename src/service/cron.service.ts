@@ -17,6 +17,11 @@ export default class CRONService {
 
   public execute = async () => {
     try {
+      if (process.env?.EXECUTION_TYPE === EXECUTION_TYPE.NONE) {
+        console.log("CRON: Halted");
+        return;
+      }
+
       console.log("CRON: INIT");
 
       if (process.env?.EXECUTION_TYPE === EXECUTION_TYPE.ON_DEMAND) {

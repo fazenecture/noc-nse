@@ -21,10 +21,14 @@ class CRONService {
     constructor() {
         this.errorMessage = (err) => `:rotating_light: *Cron Failure* at ${new Date().toLocaleString()}\n\`\`\`${err.stack || err.message}\`\`\``;
         this.execute = () => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
+            var _a, _b, _c;
             try {
+                if (((_a = process.env) === null || _a === void 0 ? void 0 : _a.EXECUTION_TYPE) === nse_1.EXECUTION_TYPE.NONE) {
+                    console.log("CRON: Halted");
+                    return;
+                }
                 console.log("CRON: INIT");
-                if (((_a = process.env) === null || _a === void 0 ? void 0 : _a.EXECUTION_TYPE) === nse_1.EXECUTION_TYPE.ON_DEMAND) {
+                if (((_b = process.env) === null || _b === void 0 ? void 0 : _b.EXECUTION_TYPE) === nse_1.EXECUTION_TYPE.ON_DEMAND) {
                     // execute the cron job manually
                     console.log("🚀 ON_DEMAND: Started", new Date().toISOString());
                     yield this.nseSyncService.init(enums_1.SYNC_TYPE.DAILY_SYNC);
@@ -33,7 +37,7 @@ class CRONService {
                 }
                 else {
                     // execute the job once before the cron job starts
-                    if (((_b = process.env) === null || _b === void 0 ? void 0 : _b.EXECUTION_TYPE) === nse_1.EXECUTION_TYPE.ONE_SYNC_BEFORE_CRON) {
+                    if (((_c = process.env) === null || _c === void 0 ? void 0 : _c.EXECUTION_TYPE) === nse_1.EXECUTION_TYPE.ONE_SYNC_BEFORE_CRON) {
                         console.log("🚀 ONE_SYNC_BEFORE_CRON: Started", new Date().toISOString());
                         yield this.nseSyncService.init(enums_1.SYNC_TYPE.DAILY_SYNC);
                         console.log("✅ ONE_SYNC_BEFORE_CRON: Completed", new Date().toISOString());

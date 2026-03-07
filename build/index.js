@@ -53,11 +53,40 @@ const cors_1 = __importDefault(require("cors"));
 const index_routes_1 = __importDefault(require("./routes/index.routes"));
 const cron_service_1 = __importDefault(require("./service/cron.service"));
 const app = (0, express_1.default)();
-app.use((0, cors_1.default)());
+const allowedOrigins = [
+    "*"
+];
+app.use((0, cors_1.default)({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl)
+        console.log("origin: ", origin);
+        if (!origin)
+            return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        else {
+            return callback(new Error("Not allowed by CORS"));
+        }
+    },
+    credentials: true,
+}));
 app.use(express_1.default.json());
 app.set("trust proxy", true);
 app.use((0, morgan_1.default)("dev"));
 app.use("/api", index_routes_1.default);
+app.get("/health", (req, res) => {
+    res.status(200).json({
+        uptime: process.uptime(),
+        hrtime: process.hrtime(),
+    });
+});
+app.use("*", (req, res) => {
+    res.status(404).json({
+        success: false,
+        message: "NOT_FOUND",
+    });
+});
 const PORT = process.env.PORT || 4000;
 const init = () => __awaiter(void 0, void 0, void 0, function* () {
     yield new cron_service_1.default().execute();

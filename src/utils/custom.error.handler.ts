@@ -10,7 +10,6 @@ const customErrorHandler = async (res: Response, error: any) => {
   //   error["Error"],
   //   error.toString()
   // );
-  console.log(`"❌ Error: ", ${error}`);
 
   if (error instanceof ValidationError) {
     return res.header({ "x-frame-options": "deny" }).status(400).json({
