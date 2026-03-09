@@ -9,28 +9,32 @@ import {
   IGetRowsInRangeParams,
   IGetByInstrumentParams,
 } from "./types/interface";
-import { ScannerSortBy, AbsorptionSortBy, VolumeOISortBy, SortOrder } from "./types/enums";
+import {
+  ScannerSortBy,
+  AbsorptionSortBy,
+  VolumeOISortBy,
+  SortOrder,
+} from "./types/enums";
 
 // ─── Sort column map (enum → SQL expression) ─────────────────────────────────
 const SCANNER_SORT_COL: Record<string, string> = {
   [ScannerSortBy.PERCENTAGE_CHANGE]: `percentage_change_contracts::numeric`,
-  [ScannerSortBy.ABSORPTION_SCORE]:  `(meta_data->>'absorptionScore')::numeric`,
-  [ScannerSortBy.VOLUME_TO_OI]:      `(meta_data->>'volumeToOI')::numeric`,
-  [ScannerSortBy.CHANGE_IN_OI]:      `change_in_oi`,
+  [ScannerSortBy.ABSORPTION_SCORE]: `(meta_data->>'absorptionScore')::numeric`,
+  [ScannerSortBy.VOLUME_TO_OI]: `(meta_data->>'volumeToOI')::numeric`,
+  [ScannerSortBy.CHANGE_IN_OI]: `change_in_oi`,
 };
 
 const ABSORPTION_SORT_COL: Record<string, string> = {
-  [AbsorptionSortBy.ABSORPTION_SCORE]:  `(meta_data->>'absorptionScore')::numeric`,
+  [AbsorptionSortBy.ABSORPTION_SCORE]: `(meta_data->>'absorptionScore')::numeric`,
   [AbsorptionSortBy.VOLUME_CHANGE_PCT]: `(meta_data->>'volumeChangePerc')::numeric`,
 };
 
 const VOLUME_OI_SORT_COL: Record<string, string> = {
-  [VolumeOISortBy.VOLUME_TO_OI]:      `(meta_data->>'volumeToOI')::numeric`,
+  [VolumeOISortBy.VOLUME_TO_OI]: `(meta_data->>'volumeToOI')::numeric`,
   [VolumeOISortBy.VOLUME_CHANGE_PCT]: `(meta_data->>'volumeChangePerc')::numeric`,
 };
 
 export default class DashboardDb {
-
   // ─── 1a. Scanner: paginated + filtered + sorted rows ─────────────────────
   protected getScannerRows = async ({
     date,
@@ -43,7 +47,10 @@ export default class DashboardDb {
     limit = 50,
   }: IGetScannerRowsParams): Promise<IProcessedDataRow[]> => {
     const params: any[] = [date];
-    const clauses: string[] = [`occurrence_date = $1`, `percentage_change_contracts not in  ('NaN', 'Infinity')`];
+    const clauses: string[] = [
+      `occurrence_date = $1`,
+      `percentage_change_contracts not in  ('NaN', 'Infinity')`,
+    ];
 
     if (instrument) {
       params.push(instrument);
@@ -58,9 +65,11 @@ export default class DashboardDb {
       clauses.push(`percentage_change_contracts::numeric >= $${params.length}`);
     }
 
-    const sortCol = SCANNER_SORT_COL[sort_by] ?? SCANNER_SORT_COL[ScannerSortBy.PERCENTAGE_CHANGE];
+    const sortCol =
+      SCANNER_SORT_COL[sort_by] ??
+      SCANNER_SORT_COL[ScannerSortBy.PERCENTAGE_CHANGE];
     const sortDir = sort_order === "asc" ? "ASC" : "DESC";
-    const offset  = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
     params.push(limit, offset);
 
@@ -86,9 +95,15 @@ export default class DashboardDb {
   }: Pick<
     IGetScannerRowsParams,
     "date" | "instrument" | "buildup_types" | "min_contract_change"
-  >): Promise<{ total_count: number; distribution: Record<string, number> }> => {
+  >): Promise<{
+    total_count: number;
+    distribution: Record<string, number>;
+  }> => {
     const params: any[] = [date];
-    const clauses: string[] = [`occurrence_date = $1`, `percentage_change_contracts not in  ('NaN', 'Infinity')`];
+    const clauses: string[] = [
+      `occurrence_date = $1`,
+      `percentage_change_contracts not in  ('NaN', 'Infinity')`,
+    ];
 
     if (instrument) {
       params.push(instrument);
@@ -231,7 +246,7 @@ export default class DashboardDb {
     const { rows } = await db.query(
       `SELECT * FROM processed_data
        WHERE ${clauses.join(" AND ")}
-       ORDER BY to_date(occurrence_date, 'DD-MM-YYYY') ASC`,
+       ORDER BY to_date(occurrence_date, 'DD-MM-YYYY') DESC`,
       params,
     );
     return rows as unknown as IProcessedDataRow[];
@@ -260,10 +275,14 @@ export default class DashboardDb {
     }
     if (min_score !== undefined) {
       params.push(min_score);
-      clauses.push(`(meta_data->>'absorptionScore')::numeric >= $${params.length}`);
+      clauses.push(
+        `(meta_data->>'absorptionScore')::numeric >= $${params.length}`,
+      );
     }
 
-    const sortCol = ABSORPTION_SORT_COL[sort_by] ?? ABSORPTION_SORT_COL[AbsorptionSortBy.ABSORPTION_SCORE];
+    const sortCol =
+      ABSORPTION_SORT_COL[sort_by] ??
+      ABSORPTION_SORT_COL[AbsorptionSortBy.ABSORPTION_SCORE];
     params.push(limit);
 
     const { rows } = await db.query(
@@ -286,7 +305,9 @@ export default class DashboardDb {
   }: {
     date: string;
     instrument?: string;
-  }): Promise<(IProcessedDataRow & { universe_mean: number; universe_std: number })[]> => {
+  }): Promise<
+    (IProcessedDataRow & { universe_mean: number; universe_std: number })[]
+  > => {
     const params: any[] = [date];
     const clauses: string[] = [`occurrence_date = $1`];
 
@@ -338,7 +359,9 @@ export default class DashboardDb {
       clauses.push(`(meta_data->>'volumeToOI')::numeric <= $${params.length}`);
     }
 
-    const sortCol = VOLUME_OI_SORT_COL[sort_by] ?? VOLUME_OI_SORT_COL[VolumeOISortBy.VOLUME_TO_OI];
+    const sortCol =
+      VOLUME_OI_SORT_COL[sort_by] ??
+      VOLUME_OI_SORT_COL[VolumeOISortBy.VOLUME_TO_OI];
 
     const { rows } = await db.query(
       `SELECT *

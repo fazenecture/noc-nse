@@ -35,7 +35,10 @@ class DashboardDb {
         this.getScannerRows = (_a) => __awaiter(this, [_a], void 0, function* ({ date, instrument, buildup_types, min_contract_change, sort_by = enums_1.ScannerSortBy.PERCENTAGE_CHANGE, sort_order = enums_1.SortOrder.DESC, page = 1, limit = 50, }) {
             var _b;
             const params = [date];
-            const clauses = [`occurrence_date = $1`, `percentage_change_contracts not in  ('NaN', 'Infinity')`];
+            const clauses = [
+                `occurrence_date = $1`,
+                `percentage_change_contracts not in  ('NaN', 'Infinity')`,
+            ];
             if (instrument) {
                 params.push(instrument);
                 clauses.push(`instrument = $${params.length}`);
@@ -64,7 +67,10 @@ class DashboardDb {
         // card counts are accurate across all pages, not just the current page.
         this.getScannerSummary = (_a) => __awaiter(this, [_a], void 0, function* ({ date, instrument, buildup_types, min_contract_change, }) {
             const params = [date];
-            const clauses = [`occurrence_date = $1`, `percentage_change_contracts not in  ('NaN', 'Infinity')`];
+            const clauses = [
+                `occurrence_date = $1`,
+                `percentage_change_contracts not in  ('NaN', 'Infinity')`,
+            ];
             if (instrument) {
                 params.push(instrument);
                 clauses.push(`instrument = $${params.length}`);
@@ -153,7 +159,7 @@ class DashboardDb {
             }
             const { rows } = yield postgres_1.default.query(`SELECT * FROM processed_data
        WHERE ${clauses.join(" AND ")}
-       ORDER BY to_date(occurrence_date, 'DD-MM-YYYY') ASC`, params);
+       ORDER BY to_date(occurrence_date, 'DD-MM-YYYY') DESC`, params);
             return rows;
         });
         // ─── 5. Absorption: filtered + sorted + limited rows ─────────────────────
