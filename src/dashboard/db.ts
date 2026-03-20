@@ -246,7 +246,7 @@ export default class DashboardDb {
     const { rows } = await db.query(
       `SELECT * FROM processed_data
        WHERE ${clauses.join(" AND ")}
-       ORDER BY to_date(occurrence_date, 'DD-MM-YYYY') DESC`,
+       ORDER BY to_date(occurrence_date, 'DD-MM-YYYY') ASC`,
       params,
     );
     return rows as unknown as IProcessedDataRow[];

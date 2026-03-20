@@ -1,10 +1,5 @@
 import DashboardHelper from "./helper";
-import {
-  ScannerSortBy,
-  AbsorptionSortBy,
-  VolumeOISortBy,
-  SortOrder,
-} from "./types/enums";
+import { ScannerSortBy, AbsorptionSortBy, VolumeOISortBy, SortOrder } from "./types/enums";
 import {
   IEnrichedRow,
   IScannerQuery,
@@ -20,6 +15,7 @@ import {
 } from "./types/interface";
 
 export default class DashboardService extends DashboardHelper {
+
   // ─── 1. Scanner Table ─────────────────────────────────────────────────────
   // Filtering, sorting and pagination all happen in Postgres.
   // Two parallel queries: paginated data + summary (count + distribution).
@@ -39,28 +35,16 @@ export default class DashboardService extends DashboardHelper {
 
     // Parse comma-separated buildup_type string → string[]
     const buildup_types = buildup_type
-      ? buildup_type
-          .toLowerCase()
-          .split(",")
-          .map((s) => s.trim())
+      ? buildup_type.toLowerCase().split(",").map((s) => s.trim())
       : undefined;
 
     const [rawRows, { total_count, distribution }] = await Promise.all([
       this.getScannerRows({
-        date,
-        instrument,
-        buildup_types,
-        min_contract_change,
-        sort_by,
-        sort_order,
-        page,
-        limit,
+        date, instrument, buildup_types, min_contract_change,
+        sort_by, sort_order, page, limit,
       }),
       this.getScannerSummary({
-        date,
-        instrument,
-        buildup_types,
-        min_contract_change,
+        date, instrument, buildup_types, min_contract_change,
       }),
     ]);
 
@@ -103,12 +87,7 @@ export default class DashboardService extends DashboardHelper {
     if (!date) return null;
 
     const [rawRows, total_surges] = await Promise.all([
-      this.getSurgeRows({
-        date,
-        min_surge_percent,
-        require_positive_oi,
-        limit,
-      }),
+      this.getSurgeRows({ date, min_surge_percent, require_positive_oi, limit }),
       this.getSurgeCount({ date, min_surge_percent, require_positive_oi }),
     ]);
 
@@ -136,30 +115,20 @@ export default class DashboardService extends DashboardHelper {
     const { instrument, from, to } = query;
 
     if (from && to) {
-      const rawRows = await this.getRowsInRange({
-        fromDate: from,
-        toDate: to,
-        instrument,
-      });
+      const rawRows = await this.getRowsInRange({ fromDate: from, toDate: to, instrument });
       const rows = rawRows.map(this.enrichRow);
 
       const byDate = new Map<string, IEnrichedRow[]>();
       for (const row of rows) {
-        if (!byDate.has(row.occurrence_date))
-          byDate.set(row.occurrence_date, []);
+        if (!byDate.has(row.occurrence_date)) byDate.set(row.occurrence_date, []);
         byDate.get(row.occurrence_date)!.push(row);
       }
 
       const series = Array.from(byDate.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([seriesDate, dayRows]) => {
-          const { distribution, sentimentScore } =
-            this.buildDistribution(dayRows);
-          return {
-            date: seriesDate,
-            distribution,
-            sentiment_score: sentimentScore,
-          };
+          const { distribution, sentimentScore } = this.buildDistribution(dayRows);
+          return { date: seriesDate, distribution, sentiment_score: sentimentScore };
         });
 
       return { from, to, series };
@@ -169,10 +138,7 @@ export default class DashboardService extends DashboardHelper {
     if (!date) return null;
 
     // Single-date: re-use getScannerSummary — same query, no row transfer needed
-    const { distribution, total_count } = await this.getScannerSummary({
-      date,
-      instrument,
-    });
+    const { distribution, total_count } = await this.getScannerSummary({ date, instrument });
     const sentimentScore = this.calcSentimentScore(distribution, total_count);
     return { date, distribution, sentiment_score: sentimentScore };
   };
@@ -186,11 +152,7 @@ export default class DashboardService extends DashboardHelper {
     const fromDate = query.from ?? this.subtractDays(toDate, 30);
 
     const rawRows = await this.getTrendRows({
-      symbol,
-      fromDate,
-      toDate,
-      instrument,
-      expiryDate: expiry_date,
+      symbol, fromDate, toDate, instrument, expiryDate: expiry_date,
     });
     if (!rawRows.length) return null;
 
@@ -211,13 +173,24 @@ export default class DashboardService extends DashboardHelper {
         change_in_oi: r.change_in_oi,
         percentage_change_contracts: r.percentage_change_contracts,
         buildup_type: r.meta.buildup_type,
+        // Price — absolute + relative change
         price_change: this.safeFloat(r.meta.priceChange),
+        price_change_percent: this.safeFloat(r.meta.priceChangePerc),
         price_return_1d: this.safeFloat(r.meta.priceReturn1D),
+        // OHLC — needed for candlestick overlay on the trend chart
+        open: this.safeFloat(r.meta.openingPrice),
+        high: this.safeFloat(r.meta.highPrice),
+        low: this.safeFloat(r.meta.lowPrice),
+        close: this.safeFloat(r.meta.closingPrice),
+        settle_price: this.safeFloat(r.meta.settlePrice),
+        prev_close: this.safeFloat(r.meta.prevClosingPrice),
+        // Derived metrics
         absorption_score: this.safeFloat(r.meta.absorptionScore),
         fut_spot_spread: this.safeFloat(r.meta.futSpotSpread),
         fut_spot_spread_percent: this.safeFloat(r.meta.futSpotSpreadPerc),
         volume_to_oi: this.safeFloat(r.meta.volumeToOI),
         intra_day_volatility: this.safeFloat(r.meta.intraDayVolatility),
+        range_to_price: this.safeFloat(r.meta.rangeToPriceRation),
       })),
     };
   };
@@ -236,11 +209,7 @@ export default class DashboardService extends DashboardHelper {
     if (!date) return null;
 
     const rawRows = await this.getAbsorptionRows({
-      date,
-      instrument,
-      min_score,
-      sort_by,
-      limit,
+      date, instrument, min_score, sort_by, limit,
     });
 
     return {
@@ -254,6 +223,13 @@ export default class DashboardService extends DashboardHelper {
           expiry_date: r.expiry_date,
           absorption_score: score,
           price_return_1d: priceReturn,
+          price_change_percent: this.safeFloat(r.meta.priceChangePerc),
+          current_price: this.safeFloat(r.meta.currentPrice),
+          close: this.safeFloat(r.meta.closingPrice),
+          high: this.safeFloat(r.meta.highPrice),
+          low: this.safeFloat(r.meta.lowPrice),
+          intra_day_volatility: this.safeFloat(r.meta.intraDayVolatility),
+          range_to_price: this.safeFloat(r.meta.rangeToPriceRation),
           volume_change_percent: this.safeFloat(r.meta.volumeChangePerc),
           buildup_type: r.meta.buildup_type,
           interpretation: this.classifyAbsorption(score, priceReturn),
@@ -282,12 +258,9 @@ export default class DashboardService extends DashboardHelper {
     const { universe_mean: mean, universe_std: std } = rawRows[0];
 
     let enriched = rawRows.map(this.enrichRow).map((r, i) => {
-      const spreadPercent = this.safeFloat(
-        (rawRows[i] as any).meta_data?.futSpotSpreadPerc ??
-          r.meta.futSpotSpreadPerc,
-      );
-      const spread = this.safeFloat(r.meta.futSpotSpread);
-      const z = this.zScore(spreadPercent, Number(mean), Number(std));
+      const spreadPercent = this.safeFloat((rawRows[i] as any).meta_data?.futSpotSpreadPerc ?? r.meta.futSpotSpreadPerc);
+      const spread        = this.safeFloat(r.meta.futSpotSpread);
+      const z             = this.zScore(spreadPercent, Number(mean), Number(std));
       return {
         symbol: r.name,
         instrument: r.instrument,
@@ -305,15 +278,14 @@ export default class DashboardService extends DashboardHelper {
 
     enriched.sort((a, b) =>
       sort_by === "futSpotSpread"
-        ? Math.abs(b.fut_spot_spread) - Math.abs(a.fut_spot_spread)
-        : Math.abs(b.fut_spot_spread_percent) -
-          Math.abs(a.fut_spot_spread_percent),
+        ? Math.abs(b.fut_spot_spread)         - Math.abs(a.fut_spot_spread)
+        : Math.abs(b.fut_spot_spread_percent) - Math.abs(a.fut_spot_spread_percent),
     );
 
     return {
       date,
       mean_spread_percent: parseFloat(Number(mean).toFixed(4)),
-      std_dev_spread: parseFloat(Number(std).toFixed(4)),
+      std_dev_spread:      parseFloat(Number(std).toFixed(4)),
       data: enriched,
     };
   };
@@ -333,11 +305,7 @@ export default class DashboardService extends DashboardHelper {
     if (!date) return null;
 
     const rawRows = await this.getVolumeOIRows({
-      date,
-      instrument,
-      min_ratio,
-      max_ratio,
-      sort_by,
+      date, instrument, min_ratio, max_ratio, sort_by,
     });
 
     return {
@@ -367,9 +335,7 @@ export default class DashboardService extends DashboardHelper {
     if (!asOf) return null;
 
     const rawRows = await this.getRecentRowsForStreaks({
-      asOfDate: asOf,
-      daysBack: 30,
-      instrument,
+      asOfDate: asOf, daysBack: 30, instrument,
     });
     const rows = rawRows.map(this.enrichRow);
 
@@ -388,32 +354,39 @@ export default class DashboardService extends DashboardHelper {
       const currentType = symbolRows[0].meta.buildup_type;
       if (buildup_type && currentType !== buildup_type) continue;
 
-      let streakDays = 0;
-      let totalOIChange = 0;
-      let totalPrice = 0;
-      let absorptionSum = 0;
+      let streakDays     = 0;
+      let totalOIChange  = 0;
+      let totalPrice     = 0;
+      let absorptionSum  = 0;
 
       for (const row of symbolRows) {
         if (row.meta.buildup_type !== currentType) break;
         streakDays++;
         totalOIChange += row.change_in_oi;
-        totalPrice += this.safeFloat(row.meta.priceChange);
+        totalPrice    += this.safeFloat(row.meta.priceChange);
         absorptionSum += this.safeFloat(row.meta.absorptionScore);
       }
 
       if (streakDays < min_streak_days) continue;
 
       streaks.push({
-        symbol: symbolRows[0].name,
-        instrument: symbolRows[0].instrument,
-        expiry_date: symbolRows[0].expiry_date,
-        current_buildup_type: currentType,
-        streak_days: streakDays,
-        streak_start_date: symbolRows[streakDays - 1].occurrence_date,
-        total_oi_change: totalOIChange,
-        cumulative_price_change: parseFloat(totalPrice.toFixed(3)),
-        average_absorption: parseFloat((absorptionSum / streakDays).toFixed(3)),
-        streak_strength: this.classifyStreakStrength(streakDays),
+        symbol:                   symbolRows[0].name,
+        instrument:               symbolRows[0].instrument,
+        expiry_date:              symbolRows[0].expiry_date,
+        current_buildup_type:     currentType,
+        streak_days:              streakDays,
+        streak_start_date:        symbolRows[streakDays - 1].occurrence_date,
+        total_oi_change:          totalOIChange,
+        cumulative_price_change:  parseFloat(totalPrice.toFixed(3)),
+        average_absorption:       parseFloat((absorptionSum / streakDays).toFixed(3)),
+        streak_strength:          this.classifyStreakStrength(streakDays),
+        // Price context on the most recent day of the streak
+        current_price:            this.safeFloat(symbolRows[0].meta.currentPrice),
+        price_change_percent:     this.safeFloat(symbolRows[0].meta.priceChangePerc),
+        close:                    this.safeFloat(symbolRows[0].meta.closingPrice),
+        high:                     this.safeFloat(symbolRows[0].meta.highPrice),
+        low:                      this.safeFloat(symbolRows[0].meta.lowPrice),
+        intra_day_volatility:     this.safeFloat(symbolRows[0].meta.intraDayVolatility),
       });
     }
 
@@ -426,14 +399,12 @@ export default class DashboardService extends DashboardHelper {
     const { symbol, expiry_date, instrument } = query;
 
     const rawRows = await this.getExpiryCycleRows({
-      symbol,
-      expiryDate: expiry_date,
-      instrument,
+      symbol, expiryDate: expiry_date, instrument,
     });
     if (!rawRows.length) return null;
 
-    const rows = rawRows.map(this.enrichRow);
-    const latest = rows[rows.length - 1];
+    const rows    = rawRows.map(this.enrichRow);
+    const latest  = rows[rows.length - 1];
     const daysLeft = this.daysBetween(latest.occurrence_date, expiry_date);
 
     const peakRow = rows.reduce((best, r) =>
@@ -443,21 +414,30 @@ export default class DashboardService extends DashboardHelper {
     return {
       symbol,
       expiry_date,
-      instrument: rows[0].instrument,
-      days_to_expiry: daysLeft,
-      cycle_phase: this.classifyCyclePhase(daysLeft),
-      peak_oi_date: peakRow.occurrence_date,
-      peak_oi_change: peakRow.change_in_oi,
+      instrument:       rows[0].instrument,
+      days_to_expiry:   daysLeft,
+      cycle_phase:      this.classifyCyclePhase(daysLeft),
+      peak_oi_date:     peakRow.occurrence_date,
+      peak_oi_change:   peakRow.change_in_oi,
       series: rows.map((r) => ({
-        date: r.occurrence_date,
-        days_to_expiry: this.daysBetween(r.occurrence_date, expiry_date),
-        change_in_oi: r.change_in_oi,
-        current_contracts: r.current_contracts,
-        percentage_change_contracts: r.percentage_change_contracts,
-        buildup_type: r.meta.buildup_type,
-        absorption_score: this.safeFloat(r.meta.absorptionScore),
-        fut_spot_spread_percent: this.safeFloat(r.meta.futSpotSpreadPerc),
-        rollover_indicator: daysLeft <= 7 && r.change_in_oi < 0,
+        date:                         r.occurrence_date,
+        days_to_expiry:               this.daysBetween(r.occurrence_date, expiry_date),
+        change_in_oi:                 r.change_in_oi,
+        current_contracts:            r.current_contracts,
+        percentage_change_contracts:  r.percentage_change_contracts,
+        buildup_type:                 r.meta.buildup_type,
+        absorption_score:             this.safeFloat(r.meta.absorptionScore),
+        fut_spot_spread_percent:      this.safeFloat(r.meta.futSpotSpreadPerc),
+        rollover_indicator:           daysLeft <= 7 && r.change_in_oi < 0,
+        // OHLC + price context — settle_price matters specifically on expiry day
+        // where settlement uses VWAP of last 30 mins, not the closing price
+        open:                         this.safeFloat(r.meta.openingPrice),
+        high:                         this.safeFloat(r.meta.highPrice),
+        low:                          this.safeFloat(r.meta.lowPrice),
+        close:                        this.safeFloat(r.meta.closingPrice),
+        settle_price:                 this.safeFloat(r.meta.settlePrice),
+        price_change_percent:         this.safeFloat(r.meta.priceChangePerc),
+        intra_day_volatility:         this.safeFloat(r.meta.intraDayVolatility),
       })),
     };
   };
@@ -472,22 +452,22 @@ export default class DashboardService extends DashboardHelper {
     const rawRows = await this.getCrossExpiryRows({ symbol, date, instrument });
     if (!rawRows.length) return null;
 
-    const rows = rawRows.map(this.enrichRow);
+    const rows   = rawRows.map(this.enrichRow);
     const labels = ["NEAR", "MID", "FAR", "FAR2"];
 
     const expiries = rows.map((r, i) => ({
-      label: labels[i] ?? `FAR${i}`,
-      expiry_date: r.expiry_date,
-      days_to_expiry: this.daysBetween(date, r.expiry_date),
-      current_contracts: r.current_contracts,
-      previous_contracts: r.previous_contracts,
-      change_in_oi: r.change_in_oi,
+      label:                       labels[i] ?? `FAR${i}`,
+      expiry_date:                 r.expiry_date,
+      days_to_expiry:              this.daysBetween(date, r.expiry_date),
+      current_contracts:           r.current_contracts,
+      previous_contracts:          r.previous_contracts,
+      change_in_oi:                r.change_in_oi,
       percentage_change_contracts: r.percentage_change_contracts,
-      pct_change_numeric: r.pct_change_numeric,
-      fut_spot_spread_percent: this.safeFloat(r.meta.futSpotSpreadPerc),
-      buildup_type: r.meta.buildup_type,
-      volume_to_oi: this.safeFloat(r.meta.volumeToOI),
-      absorption_score: this.safeFloat(r.meta.absorptionScore),
+      pct_change_numeric:          r.pct_change_numeric,
+      fut_spot_spread_percent:     this.safeFloat(r.meta.futSpotSpreadPerc),
+      buildup_type:                r.meta.buildup_type,
+      volume_to_oi:                this.safeFloat(r.meta.volumeToOI),
+      absorption_score:            this.safeFloat(r.meta.absorptionScore),
     }));
 
     const dominantExpiry = expiries.reduce((best, e) =>
@@ -497,31 +477,22 @@ export default class DashboardService extends DashboardHelper {
     return {
       symbol,
       date,
-      instrument: rows[0].instrument,
+      instrument:       rows[0].instrument,
       expiries,
-      rollover_signal: this.classifyRollover(expiries),
-      dominant_expiry: dominantExpiry,
+      rollover_signal:  this.classifyRollover(expiries),
+      dominant_expiry:  dominantExpiry,
     };
   };
 
   // ─── 11. Available dates ──────────────────────────────────────────────────
-  protected getAvailableDatesService = async ({
-    instrument,
-  }: {
-    instrument?: string;
-  }) => this.getAvailableDatesDb({ instrument });
+  protected getAvailableDatesService = async ({ instrument }: { instrument?: string }) =>
+    this.getAvailableDatesDb({ instrument });
 
   // ─── 12. Available expiry dates ───────────────────────────────────────────
-  protected getAvailableExpiryDatesService = async ({
-    instrument,
-  }: {
-    instrument?: string;
-  }) => this.getAvailableExpiryDatesDb({ instrument });
+  protected getAvailableExpiryDatesService = async ({ instrument }: { instrument?: string }) =>
+    this.getAvailableExpiryDatesDb({ instrument });
 
   // ─── 13. Available symbols ────────────────────────────────────────────────
-  protected getAvailableSymbolsService = async ({
-    instrument,
-  }: {
-    instrument?: string;
-  }) => this.getAvailableSymbolsDb({ instrument });
+  protected getAvailableSymbolsService = async ({ instrument }: { instrument?: string }) =>
+    this.getAvailableSymbolsDb({ instrument });
 }

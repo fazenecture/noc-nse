@@ -39,6 +39,16 @@ export interface IMetaData {
   volumeChangePerc: string;
   absorptionScore: string;
   previousDayVolumeChange: string;
+  // ─── OHLC + price context (new fields) ───────────────────────────────────
+  currentPrice: string;        // FH_LAST_TRADED_PRICE today
+  previousPrice: string;       // FH_LAST_TRADED_PRICE yesterday
+  priceChangePerc: string;     // (currentPrice - previousPrice) / previousPrice * 100
+  openingPrice: string;        // FH_OPENING_PRICE
+  closingPrice: string;        // FH_CLOSING_PRICE
+  highPrice: string;           // FH_TRADE_HIGH_PRICE
+  lowPrice: string;            // FH_TRADE_LOW_PRICE
+  settlePrice: string;         // FH_SETTLE_PRICE (used for mark-to-market)
+  prevClosingPrice: string;    // FH_PREV_CLS — previous session closing price
 }
 
 // ─── Row after enrichment (meta parsed, computed fields added) ────────────────

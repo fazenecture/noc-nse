@@ -132,6 +132,16 @@ export default class NSEHelper extends NSEDb {
           volumeChangePerc: volumeChangePerc.toFixed(3),
           absorptionScore: absorptionScore.toFixed(3),
           previousDayVolumeChange: volumeChangePrevDay.toFixed(3),
+
+          currentPrice: currentPrice.toFixed(3),
+          previousPrice: previousPrice.toFixed(3),
+          priceChangePerc: ((priceChangeAbs / previousPrice) * 100).toFixed(3),
+          openingPrice: Number.parseFloat(current.FH_OPENING_PRICE).toFixed(3),
+          closingPrice: Number.parseFloat(current.FH_CLOSING_PRICE).toFixed(3),
+          highPrice: Number.parseFloat(current.FH_TRADE_HIGH_PRICE).toFixed(3),
+          lowPrice: Number.parseFloat(current.FH_TRADE_LOW_PRICE).toFixed(3),
+          settlePrice: Number.parseFloat(current.FH_SETTLE_PRICE).toFixed(3),
+          prevClosingPrice: Number.parseFloat(current.FH_PREV_CLS).toFixed(3),
         },
       });
     }
