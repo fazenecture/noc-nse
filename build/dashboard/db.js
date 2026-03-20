@@ -159,7 +159,7 @@ class DashboardDb {
             }
             const { rows } = yield postgres_1.default.query(`SELECT * FROM processed_data
        WHERE ${clauses.join(" AND ")}
-       ORDER BY to_date(occurrence_date, 'DD-MM-YYYY') DESC`, params);
+       ORDER BY to_date(occurrence_date, 'DD-MM-YYYY') ASC`, params);
             return rows;
         });
         // ─── 5. Absorption: filtered + sorted + limited rows ─────────────────────

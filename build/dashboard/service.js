@@ -27,27 +27,15 @@ class DashboardService extends helper_1.default {
                 return null;
             // Parse comma-separated buildup_type string → string[]
             const buildup_types = buildup_type
-                ? buildup_type
-                    .toLowerCase()
-                    .split(",")
-                    .map((s) => s.trim())
+                ? buildup_type.toLowerCase().split(",").map((s) => s.trim())
                 : undefined;
             const [rawRows, { total_count, distribution }] = yield Promise.all([
                 this.getScannerRows({
-                    date,
-                    instrument,
-                    buildup_types,
-                    min_contract_change,
-                    sort_by,
-                    sort_order,
-                    page,
-                    limit,
+                    date, instrument, buildup_types, min_contract_change,
+                    sort_by, sort_order, page, limit,
                 }),
                 this.getScannerSummary({
-                    date,
-                    instrument,
-                    buildup_types,
-                    min_contract_change,
+                    date, instrument, buildup_types, min_contract_change,
                 }),
             ]);
             const rows = rawRows.map(this.enrichRow);
@@ -82,12 +70,7 @@ class DashboardService extends helper_1.default {
             if (!date)
                 return null;
             const [rawRows, total_surges] = yield Promise.all([
-                this.getSurgeRows({
-                    date,
-                    min_surge_percent,
-                    require_positive_oi,
-                    limit,
-                }),
+                this.getSurgeRows({ date, min_surge_percent, require_positive_oi, limit }),
                 this.getSurgeCount({ date, min_surge_percent, require_positive_oi }),
             ]);
             return {
@@ -112,11 +95,7 @@ class DashboardService extends helper_1.default {
         this.getDistributionService = (query) => __awaiter(this, void 0, void 0, function* () {
             const { instrument, from, to } = query;
             if (from && to) {
-                const rawRows = yield this.getRowsInRange({
-                    fromDate: from,
-                    toDate: to,
-                    instrument,
-                });
+                const rawRows = yield this.getRowsInRange({ fromDate: from, toDate: to, instrument });
                 const rows = rawRows.map(this.enrichRow);
                 const byDate = new Map();
                 for (const row of rows) {
@@ -128,11 +107,7 @@ class DashboardService extends helper_1.default {
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([seriesDate, dayRows]) => {
                     const { distribution, sentimentScore } = this.buildDistribution(dayRows);
-                    return {
-                        date: seriesDate,
-                        distribution,
-                        sentiment_score: sentimentScore,
-                    };
+                    return { date: seriesDate, distribution, sentiment_score: sentimentScore };
                 });
                 return { from, to, series };
             }
@@ -140,10 +115,7 @@ class DashboardService extends helper_1.default {
             if (!date)
                 return null;
             // Single-date: re-use getScannerSummary — same query, no row transfer needed
-            const { distribution, total_count } = yield this.getScannerSummary({
-                date,
-                instrument,
-            });
+            const { distribution, total_count } = yield this.getScannerSummary({ date, instrument });
             const sentimentScore = this.calcSentimentScore(distribution, total_count);
             return { date, distribution, sentiment_score: sentimentScore };
         });
@@ -156,11 +128,7 @@ class DashboardService extends helper_1.default {
                 return null;
             const fromDate = (_a = query.from) !== null && _a !== void 0 ? _a : this.subtractDays(toDate, 30);
             const rawRows = yield this.getTrendRows({
-                symbol,
-                fromDate,
-                toDate,
-                instrument,
-                expiryDate: expiry_date,
+                symbol, fromDate, toDate, instrument, expiryDate: expiry_date,
             });
             if (!rawRows.length)
                 return null;
@@ -180,13 +148,24 @@ class DashboardService extends helper_1.default {
                     change_in_oi: r.change_in_oi,
                     percentage_change_contracts: r.percentage_change_contracts,
                     buildup_type: r.meta.buildup_type,
+                    // Price — absolute + relative change
                     price_change: this.safeFloat(r.meta.priceChange),
+                    price_change_percent: this.safeFloat(r.meta.priceChangePerc),
                     price_return_1d: this.safeFloat(r.meta.priceReturn1D),
+                    // OHLC — needed for candlestick overlay on the trend chart
+                    open: this.safeFloat(r.meta.openingPrice),
+                    high: this.safeFloat(r.meta.highPrice),
+                    low: this.safeFloat(r.meta.lowPrice),
+                    close: this.safeFloat(r.meta.closingPrice),
+                    settle_price: this.safeFloat(r.meta.settlePrice),
+                    prev_close: this.safeFloat(r.meta.prevClosingPrice),
+                    // Derived metrics
                     absorption_score: this.safeFloat(r.meta.absorptionScore),
                     fut_spot_spread: this.safeFloat(r.meta.futSpotSpread),
                     fut_spot_spread_percent: this.safeFloat(r.meta.futSpotSpreadPerc),
                     volume_to_oi: this.safeFloat(r.meta.volumeToOI),
                     intra_day_volatility: this.safeFloat(r.meta.intraDayVolatility),
+                    range_to_price: this.safeFloat(r.meta.rangeToPriceRation),
                 })),
             };
         });
@@ -198,11 +177,7 @@ class DashboardService extends helper_1.default {
             if (!date)
                 return null;
             const rawRows = yield this.getAbsorptionRows({
-                date,
-                instrument,
-                min_score,
-                sort_by,
-                limit,
+                date, instrument, min_score, sort_by, limit,
             });
             return {
                 date,
@@ -215,6 +190,13 @@ class DashboardService extends helper_1.default {
                         expiry_date: r.expiry_date,
                         absorption_score: score,
                         price_return_1d: priceReturn,
+                        price_change_percent: this.safeFloat(r.meta.priceChangePerc),
+                        current_price: this.safeFloat(r.meta.currentPrice),
+                        close: this.safeFloat(r.meta.closingPrice),
+                        high: this.safeFloat(r.meta.highPrice),
+                        low: this.safeFloat(r.meta.lowPrice),
+                        intra_day_volatility: this.safeFloat(r.meta.intraDayVolatility),
+                        range_to_price: this.safeFloat(r.meta.rangeToPriceRation),
                         volume_change_percent: this.safeFloat(r.meta.volumeChangePerc),
                         buildup_type: r.meta.buildup_type,
                         interpretation: this.classifyAbsorption(score, priceReturn),
@@ -256,8 +238,7 @@ class DashboardService extends helper_1.default {
                 enriched = enriched.filter((r) => r.is_outlier);
             enriched.sort((a, b) => sort_by === "futSpotSpread"
                 ? Math.abs(b.fut_spot_spread) - Math.abs(a.fut_spot_spread)
-                : Math.abs(b.fut_spot_spread_percent) -
-                    Math.abs(a.fut_spot_spread_percent));
+                : Math.abs(b.fut_spot_spread_percent) - Math.abs(a.fut_spot_spread_percent));
             return {
                 date,
                 mean_spread_percent: parseFloat(Number(mean).toFixed(4)),
@@ -274,11 +255,7 @@ class DashboardService extends helper_1.default {
             if (!date)
                 return null;
             const rawRows = yield this.getVolumeOIRows({
-                date,
-                instrument,
-                min_ratio,
-                max_ratio,
-                sort_by,
+                date, instrument, min_ratio, max_ratio, sort_by,
             });
             return {
                 date,
@@ -305,9 +282,7 @@ class DashboardService extends helper_1.default {
             if (!asOf)
                 return null;
             const rawRows = yield this.getRecentRowsForStreaks({
-                asOfDate: asOf,
-                daysBack: 30,
-                instrument,
+                asOfDate: asOf, daysBack: 30, instrument,
             });
             const rows = rawRows.map(this.enrichRow);
             const grouped = new Map();
@@ -349,6 +324,13 @@ class DashboardService extends helper_1.default {
                     cumulative_price_change: parseFloat(totalPrice.toFixed(3)),
                     average_absorption: parseFloat((absorptionSum / streakDays).toFixed(3)),
                     streak_strength: this.classifyStreakStrength(streakDays),
+                    // Price context on the most recent day of the streak
+                    current_price: this.safeFloat(symbolRows[0].meta.currentPrice),
+                    price_change_percent: this.safeFloat(symbolRows[0].meta.priceChangePerc),
+                    close: this.safeFloat(symbolRows[0].meta.closingPrice),
+                    high: this.safeFloat(symbolRows[0].meta.highPrice),
+                    low: this.safeFloat(symbolRows[0].meta.lowPrice),
+                    intra_day_volatility: this.safeFloat(symbolRows[0].meta.intraDayVolatility),
                 });
             }
             streaks.sort((a, b) => b.streak_days - a.streak_days);
@@ -358,9 +340,7 @@ class DashboardService extends helper_1.default {
         this.getExpiryCycleService = (query) => __awaiter(this, void 0, void 0, function* () {
             const { symbol, expiry_date, instrument } = query;
             const rawRows = yield this.getExpiryCycleRows({
-                symbol,
-                expiryDate: expiry_date,
-                instrument,
+                symbol, expiryDate: expiry_date, instrument,
             });
             if (!rawRows.length)
                 return null;
@@ -386,6 +366,15 @@ class DashboardService extends helper_1.default {
                     absorption_score: this.safeFloat(r.meta.absorptionScore),
                     fut_spot_spread_percent: this.safeFloat(r.meta.futSpotSpreadPerc),
                     rollover_indicator: daysLeft <= 7 && r.change_in_oi < 0,
+                    // OHLC + price context — settle_price matters specifically on expiry day
+                    // where settlement uses VWAP of last 30 mins, not the closing price
+                    open: this.safeFloat(r.meta.openingPrice),
+                    high: this.safeFloat(r.meta.highPrice),
+                    low: this.safeFloat(r.meta.lowPrice),
+                    close: this.safeFloat(r.meta.closingPrice),
+                    settle_price: this.safeFloat(r.meta.settlePrice),
+                    price_change_percent: this.safeFloat(r.meta.priceChangePerc),
+                    intra_day_volatility: this.safeFloat(r.meta.intraDayVolatility),
                 })),
             };
         });
@@ -428,11 +417,11 @@ class DashboardService extends helper_1.default {
             };
         });
         // ─── 11. Available dates ──────────────────────────────────────────────────
-        this.getAvailableDatesService = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument, }) { return this.getAvailableDatesDb({ instrument }); });
+        this.getAvailableDatesService = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument }) { return this.getAvailableDatesDb({ instrument }); });
         // ─── 12. Available expiry dates ───────────────────────────────────────────
-        this.getAvailableExpiryDatesService = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument, }) { return this.getAvailableExpiryDatesDb({ instrument }); });
+        this.getAvailableExpiryDatesService = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument }) { return this.getAvailableExpiryDatesDb({ instrument }); });
         // ─── 13. Available symbols ────────────────────────────────────────────────
-        this.getAvailableSymbolsService = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument, }) { return this.getAvailableSymbolsDb({ instrument }); });
+        this.getAvailableSymbolsService = (_a) => __awaiter(this, [_a], void 0, function* ({ instrument }) { return this.getAvailableSymbolsDb({ instrument }); });
     }
 }
 exports.default = DashboardService;
